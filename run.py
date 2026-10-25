@@ -705,7 +705,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <input type="file" id="csvFileUp" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
     </label>
 
-    <button class="btn alt" style="margin-left:4px" onclick="exportCSV()">Export CSV</button>
+    <div style="display:inline-flex; align-items:center; margin-left:4px;">
+      <input type="text" id="sheetUrl" placeholder="Google Sheets CSV URL" style="width:160px; margin-right:4px; background:#070a1c; color:#f5f3ff; border:1px solid var(--border); border-radius:5px; padding:5px; font-size:12px;">
+      <button class="btn alt" onclick="fetchSheetUrl()">Fetch</button>
+    </div>
+
     <button class="btn" style="margin-left:4px" onclick="sitrep()"><span data-i="sitrep">Situation report</span></button>
   </div>
 </header>
@@ -979,17 +983,6 @@ const distHi = {"Barmer":"बाड़मेर", "Jodhpur":"जोधपुर"
 const distMr = {"Barmer":"बाडमेर", "Jodhpur":"जोधपूर", "Bikaner":"बिकानेर", "Jaisalmer":"जैसलमेर", "Jaipur":"जयपूर", "Kutch":"कच्छ", "Ahmednagar":"अहमदनगर", "Pune":"पुणे", "Latur":"लातूर", "Bhopal":"भोपाळ", "Wayanad":"वायनाड", "Kozhikode":"कोझिकोड"};
 const trDist = nm => lang === 'hi' ? (distHi[nm] || nm) : lang === 'mr' ? (distMr[nm] || nm) : nm;
 
-if($('week')) $('week').addEventListener('input', e => { 
-    wk = +e.target.value; 
-    activeHighlightWeek = wk; 
-    render(); 
-});
-
-if($('vx')) $('vx').addEventListener('input', e => { 
-    vaxPlus = +e.target.value; 
-    showDistrict(byId[selected]); 
-});
-
 function applyLang() { 
   document.querySelectorAll('[data-i]').forEach(e => {
     const key = e.dataset.i;
@@ -1026,13 +1019,32 @@ async function handleCSVUpload(e) {
     const p = await post('/api/upload', { csv_data: text });
     ingest(p); 
     wk = LAST; 
-    $('week').value = LAST; 
+    if($('week')) $('week').value = LAST; 
     render(); 
     toast('CSV Uploaded & Dashboard Updated');
   } catch (err) {
     toast('Upload failed: ' + err.message, true);
   }
   e.target.value = '';
+}
+
+async function fetchSheetUrl() {
+  const url = $('sheetUrl').value;
+  if (!url) {
+    toast('Please enter a Google Sheets CSV URL', true);
+    return;
+  }
+  toast('Fetching Google Sheet...');
+  try {
+    const p = await post('/api/fetch_url', { url: url });
+    ingest(p); 
+    wk = LAST; 
+    if($('week')) $('week').value = LAST; 
+    render(); 
+    toast('Google Sheet Synced & Dashboard Updated');
+  } catch (err) {
+    toast('Fetch failed: ' + err.message, true);
+  }
 }
 
 function ingest(p) {
@@ -1429,8 +1441,7 @@ async function ack(id) { try { ingest(await post('/api/ack', { district: id }));
 async function refreshNow() { try { ingest(await post('/api/refresh', {})); render(); toast('Data refreshed'); } catch (e) { toast('Refresh needs the run.py server', true); } }
 
 function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/plain' })); a.download = name; a.click(); }
-function exportCSV() { const rows = ['district,state,week,risk_score,status,deaths,abortions,human_fever'];
-  D.forEach(d => d.S.forEach((s, i) => rows.push([d.name, d.state, P.weeks[i], s, statusFor(s), d.deaths[i], d.abortions[i], d.human[i]].join(',')))); download('spillover_radar_scores.csv', rows.join('\n'), 'text/csv'); }
+
 function alertText(d) { const s = d.S[wk], top = shareOf(d, wk).map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 2).map(([v, i]) => P.factorNames[i] + ' ' + v + '%').join('; ');
   const out = P.corridors.filter(c => c.from === d.id || c.to === d.id).map(c => byId[c.from === d.id ? c.to : c.from].name).join(', ');
   return T('a_alert') + ' [' + lbl(statusFor(s)) + '] ' + trDist(d.name) + ', ' + d.state + ' \u2014 ' + T('a_risk') + ' ' + s + '/100 (' + P.weeks[wk] + '). ' + top + '. ' + T('a_animal') + ': ' + d.deaths[wk] + ' ' + T('a_deaths') + ', ' + d.abortions[wk] + ' ' + T('a_abort') +
@@ -1476,6 +1487,17 @@ function setW(ws) {
   recompute(); render(); 
 }
 [0, 1, 2].forEach(i => { if($('s' + i)) $('s' + i).addEventListener('input', () => setW([0, 1, 2].map(k => +$('s' + k).value))); });
+
+if($('week')) $('week').addEventListener('input', e => { 
+    wk = parseInt(e.target.value); 
+    activeHighlightWeek = wk; 
+    render(); 
+});
+
+if($('vx')) $('vx').addEventListener('input', e => { 
+    vaxPlus = parseInt(e.target.value); 
+    showDistrict(byId[selected]); 
+});
 
 applyLang(); ingest(P); setW(W);
 </script>
