@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T14:16:28+05:30",
+ "generated_at": "2026-10-25T18:55:47+05:30",
  "weeks": [
   "Wk 1",
   "Wk 2",
@@ -40,7 +40,7 @@
     44.5,
     51.5,
     50.0,
-    960.0
+    69.0
    ],
    "clim": [
     3.25,
@@ -81,7 +81,7 @@
     4,
     5,
     4,
-    104
+    5
    ],
    "abortions": [
     3,
@@ -91,7 +91,7 @@
     6,
     6,
     7,
-    118
+    10
    ],
    "ppr": [
     5,
@@ -101,7 +101,7 @@
     9,
     11,
     11,
-    166
+    16
    ],
    "temp": [
     1.22,
@@ -166,24 +166,26 @@
     ]
    ],
    "ml_score": [
-    37,
-    25,
-    20,
-    31,
+    50,
     34,
+    28,
     41,
-    48,
+    44,
+    53,
+    60,
     100
    ],
    "ml_shares": [
-    65,
-    19,
+    54,
+    31,
     15
    ],
    "ml_anomaly": true,
    "cusum_week": 3,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 4,
+   "vaccines": 30000
   },
   {
    "id": "jodhpur",
@@ -325,14 +327,14 @@
     ]
    ],
    "ml_score": [
-    9,
-    6,
-    5,
-    5,
+    13,
     8,
+    7,
     8,
-    12,
-    14
+    13,
+    13,
+    18,
+    19
    ],
    "ml_shares": [
     0,
@@ -342,7 +344,9 @@
    "ml_anomaly": false,
    "cusum_week": 4,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 4,
+   "vaccines": 18000
   },
   {
    "id": "bikaner",
@@ -484,24 +488,26 @@
     ]
    ],
    "ml_score": [
-    10,
-    9,
-    16,
-    15,
     14,
-    19,
-    28,
-    30
+    14,
+    24,
+    23,
+    20,
+    26,
+    40,
+    46
    ],
    "ml_shares": [
     0,
     0,
     0
    ],
-   "ml_anomaly": false,
+   "ml_anomaly": true,
    "cusum_week": 4,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 1,
+   "vaccines": 13500
   },
   {
    "id": "jaisalmer",
@@ -643,14 +649,14 @@
     ]
    ],
    "ml_score": [
-    18,
-    8,
-    7,
-    11,
-    20,
-    20,
-    23,
-    38
+    25,
+    14,
+    12,
+    16,
+    27,
+    28,
+    30,
+    49
    ],
    "ml_shares": [
     0,
@@ -660,7 +666,9 @@
    "ml_anomaly": true,
    "cusum_week": 6,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 1,
+   "vaccines": 13500
   },
   {
    "id": "jaipur",
@@ -802,24 +810,26 @@
     ]
    ],
    "ml_score": [
-    8,
-    10,
+    11,
+    14,
     0,
     0,
     0,
-    7,
     9,
+    10,
     4
    ],
    "ml_shares": [
     0,
-    74,
-    26
+    73,
+    27
    ],
    "ml_anomaly": false,
    "cusum_week": 7,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 2,
+   "vaccines": 33000
   },
   {
    "id": "kutch",
@@ -961,14 +971,14 @@
     ]
    ],
    "ml_score": [
-    8,
     10,
-    5,
-    7,
+    15,
+    8,
     11,
-    14,
-    14,
-    17
+    16,
+    19,
+    21,
+    24
    ],
    "ml_shares": [
     0,
@@ -978,7 +988,9 @@
    "ml_anomaly": false,
    "cusum_week": 4,
    "complete": 83,
-   "gap": true
+   "gap": true,
+   "teams": 4,
+   "vaccines": 36000
   },
   {
    "id": "ahmednagar",
@@ -1120,14 +1132,14 @@
     ]
    ],
    "ml_score": [
-    20,
-    12,
+    27,
+    16,
+    7,
+    5,
+    9,
     6,
-    5,
-    7,
-    5,
-    7,
-    6
+    9,
+    8
    ],
    "ml_shares": [
     0,
@@ -1137,7 +1149,9 @@
    "ml_anomaly": false,
    "cusum_week": null,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 1,
+   "vaccines": 7500
   },
   {
    "id": "pune",
@@ -1279,14 +1293,14 @@
     ]
    ],
    "ml_score": [
-    7,
     9,
-    11,
-    7,
-    11,
-    16,
-    25,
-    9
+    13,
+    14,
+    9,
+    15,
+    21,
+    32,
+    12
    ],
    "ml_shares": [
     0,
@@ -1296,7 +1310,9 @@
    "ml_anomaly": false,
    "cusum_week": null,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 1,
+   "vaccines": 7500
   },
   {
    "id": "latur",
@@ -1438,14 +1454,14 @@
     ]
    ],
    "ml_score": [
-    14,
-    3,
-    4,
+    18,
     5,
     5,
-    12,
+    5,
+    6,
+    16,
     3,
-    10
+    13
    ],
    "ml_shares": [
     0,
@@ -1455,7 +1471,9 @@
    "ml_anomaly": false,
    "cusum_week": 4,
    "complete": 83,
-   "gap": true
+   "gap": true,
+   "teams": 2,
+   "vaccines": 27000
   },
   {
    "id": "bhopal",
@@ -1597,14 +1615,14 @@
     ]
    ],
    "ml_score": [
-    9,
-    13,
-    3,
+    12,
+    18,
     4,
-    3,
-    20,
+    5,
     4,
-    4
+    26,
+    6,
+    6
    ],
    "ml_shares": [
     0,
@@ -1614,7 +1632,9 @@
    "ml_anomaly": false,
    "cusum_week": null,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 2,
+   "vaccines": 21000
   },
   {
    "id": "wayanad",
@@ -1756,14 +1776,14 @@
     ]
    ],
    "ml_score": [
-    35,
-    30,
-    35,
-    35,
-    52,
-    40,
-    43,
-    30
+    45,
+    37,
+    45,
+    45,
+    65,
+    50,
+    54,
+    37
    ],
    "ml_shares": [
     0,
@@ -1773,7 +1793,9 @@
    "ml_anomaly": false,
    "cusum_week": null,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 1,
+   "vaccines": 19500
   },
   {
    "id": "kozhikode",
@@ -1915,14 +1937,14 @@
     ]
    ],
    "ml_score": [
-    28,
-    39,
-    36,
-    30,
-    26,
-    28,
-    26,
-    29
+    34,
+    49,
+    45,
+    37,
+    32,
+    35,
+    32,
+    36
    ],
    "ml_shares": [
     0,
@@ -1932,7 +1954,9 @@
    "ml_anomaly": false,
    "cusum_week": null,
    "complete": 100,
-   "gap": false
+   "gap": false,
+   "teams": 3,
+   "vaccines": 22500
   }
  ],
  "steps": [
@@ -1946,35 +1970,31 @@
   {
    "district": "Barmer",
    "id": "barmer",
-   "opened": "2026-10-25T13:51:46+05:30",
+   "opened": "2026-10-25T18:53:59+05:30",
    "step": 0
   },
   {
    "district": "Bikaner",
    "id": "bikaner",
-   "opened": "2026-10-25T13:51:46+05:30",
+   "opened": "2026-10-25T18:53:59+05:30",
    "step": 0
   }
  ],
  "events": [
   {
-   "ts": "2026-10-25T14:16:25+05:30",
-   "text": "Field report: Barmer +55 abortions, +44 deaths, +96 PPR/FMD"
+   "ts": "2026-10-25T18:55:46+05:30",
+   "text": "Field report: Barmer +2 abortions, +0 deaths, +2 PPR/FMD"
   },
   {
-   "ts": "2026-10-25T14:15:53+05:30",
-   "text": "Field report: Barmer +0 abortions, +0 deaths, +0 PPR/FMD"
+   "ts": "2026-10-25T18:54:58+05:30",
+   "text": "Refresh requested (simulated mode: start with --live for real weather)"
   },
   {
-   "ts": "2026-10-25T14:15:50+05:30",
-   "text": "Field report: Barmer +55 abortions, +55 deaths, +56 PPR/FMD"
-  },
-  {
-   "ts": "2026-10-25T13:51:46+05:30",
+   "ts": "2026-10-25T18:53:59+05:30",
    "text": "ALERT opened: Bikaner reached 73.9"
   },
   {
-   "ts": "2026-10-25T13:51:46+05:30",
+   "ts": "2026-10-25T18:53:59+05:30",
    "text": "ALERT opened: Barmer reached 88.6"
   }
  ],
@@ -2061,112 +2081,6 @@
    "vol": 0.4
   }
  ],
- "lag": {
-  "stats": [
-   {
-    "lag": 0,
-    "r": 0.501
-   },
-   {
-    "lag": 1,
-    "r": 0.692
-   },
-   {
-    "lag": 2,
-    "r": 0.865
-   },
-   {
-    "lag": 3,
-    "r": 0.759
-   },
-   {
-    "lag": 4,
-    "r": 0.652
-   }
-  ],
-  "best": 2,
-  "assumed": 2
- },
- "lead": {
-  "rows": [
-   {
-    "name": "Barmer",
-    "radar": 0,
-    "cusum": 3,
-    "human": 6
-   },
-   {
-    "name": "Jodhpur",
-    "radar": 0,
-    "cusum": 4,
-    "human": 7
-   },
-   {
-    "name": "Bikaner",
-    "radar": 0,
-    "cusum": 4,
-    "human": 7
-   },
-   {
-    "name": "Jaisalmer",
-    "radar": 1,
-    "cusum": 6,
-    "human": 5
-   },
-   {
-    "name": "Jaipur",
-    "radar": null,
-    "cusum": 7,
-    "human": null
-   },
-   {
-    "name": "Kutch",
-    "radar": 2,
-    "cusum": 4,
-    "human": null
-   },
-   {
-    "name": "Ahmednagar",
-    "radar": null,
-    "cusum": null,
-    "human": null
-   },
-   {
-    "name": "Pune",
-    "radar": null,
-    "cusum": null,
-    "human": null
-   },
-   {
-    "name": "Latur",
-    "radar": null,
-    "cusum": 4,
-    "human": null
-   },
-   {
-    "name": "Bhopal",
-    "radar": null,
-    "cusum": null,
-    "human": null
-   },
-   {
-    "name": "Wayanad",
-    "radar": null,
-    "cusum": null,
-    "human": null
-   },
-   {
-    "name": "Kozhikode",
-    "radar": null,
-    "cusum": null,
-    "human": null
-   }
-  ],
-  "radar_median": 6.5,
-  "cusum_median": 3.0,
-  "n": 4,
-  "human_threshold": "CUSUM"
- },
  "webhook": false,
  "scenario": null
 }
