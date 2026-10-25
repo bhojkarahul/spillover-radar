@@ -398,6 +398,9 @@ def compute_payload():
 # --------------------------------------------------------------------------
 # 3. [D.01] DASHBOARD HTML
 # --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# 3. [D.01] DASHBOARD HTML
+# --------------------------------------------------------------------------
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html>
 <head>
@@ -408,60 +411,259 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
+ :root {
+   --bg-deep: #050714;
+   --bg-panel: #0a0d24;
+   --bg-card: rgba(17, 22, 51, 0.78);
+   --border: rgba(192, 132, 252, 0.22);
+   --purple: #c084fc;
+   --pink: #f472b6;
+   --text-main: #f5f3ff;
+   --text-muted: #a5b4fc;
+ }
  *{box-sizing:border-box}
- body{margin:0;font-family:-apple-system,'Segoe UI',sans-serif;background:#0a0f1d;color:#fff}
- header{background:#0f172a;padding:8px 18px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;min-height:56px;gap:10px;flex-wrap:wrap}
- .badge{background:#0284c7;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold}
- .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:5px;color:#0a0f1d}
- .live{background:#10b981}.csv{background:#38bdf8}.sim{background:#fbbf24}
+ body{
+   margin:0;
+   font-family:'Inter',-apple-system,'Segoe UI',sans-serif;
+   background-color: var(--bg-deep);
+   background-image: 
+     radial-gradient(circle at 15% 20%, rgba(192, 132, 252, 0.12) 0%, transparent 40%),
+     radial-gradient(circle at 85% 80%, rgba(244, 114, 182, 0.10) 0%, transparent 40%),
+     radial-gradient(rgba(192, 132, 252, 0.14) 1px, transparent 1px);
+   background-size: 100% 100%, 100% 100%, 22px 22px;
+   color: var(--text-main);
+ }
+
+ /* --- 1. WELCOME PAGE OVERLAY --- */
+ #welcome {
+   position: fixed;
+   inset: 0;
+   z-index: 9000;
+   background-color: #040612;
+   background-image: 
+     radial-gradient(circle at 50% 35%, rgba(192, 132, 252, 0.20) 0%, rgba(244, 114, 182, 0.08) 35%, transparent 70%),
+     radial-gradient(rgba(244, 114, 182, 0.16) 1px, transparent 1px);
+   background-size: 100% 100%, 26px 26px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 24px;
+   transition: opacity 0.45s ease, transform 0.45s ease;
+ }
+ #welcome.hide {
+   opacity: 0;
+   transform: scale(1.04);
+   pointer-events: none;
+ }
+ .w-card {
+   max-width: 650px;
+   width: 100%;
+   background: rgba(10, 13, 36, 0.82);
+   backdrop-filter: blur(16px);
+   border: 1px solid rgba(192, 132, 252, 0.35);
+   border-radius: 20px;
+   padding: 42px 34px;
+   text-align: center;
+   box-shadow: 0 24px 60px rgba(0,0,0,0.75), 0 0 40px rgba(192, 132, 252, 0.15);
+ }
+ .w-radar {
+   width: 78px;
+   height: 78px;
+   margin: 0 auto 20px;
+   border-radius: 50%;
+   background: radial-gradient(circle, rgba(244,114,182,0.35), rgba(192,132,252,0.08));
+   border: 2px solid var(--pink);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 34px;
+   position: relative;
+   box-shadow: 0 0 25px rgba(244,114,182,0.4);
+ }
+ .w-radar::after {
+   content: '';
+   position: absolute;
+   inset: -8px;
+   border-radius: 50%;
+   border: 2px solid var(--purple);
+   animation: pr 2s ease-out infinite;
+ }
+ .w-title {
+   font-size: 40px;
+   font-weight: 800;
+   margin: 14px 0 10px;
+   background: linear-gradient(90deg, #f5f3ff, #e879f9, #f472b6);
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   letter-spacing: -0.5px;
+ }
+ .w-sub {
+   color: #cbd5e1;
+   font-size: 15px;
+   line-height: 1.6;
+   max-width: 520px;
+   margin: 0 auto 24px;
+ }
+ .w-pills {
+   display: flex;
+   gap: 10px;
+   justify-content: center;
+   flex-wrap: wrap;
+   margin-bottom: 30px;
+ }
+ .w-pill {
+   background: rgba(192, 132, 252, 0.12);
+   border: 1px solid rgba(192, 132, 252, 0.3);
+   color: #e9d5ff;
+   padding: 7px 14px;
+   border-radius: 999px;
+   font-size: 12px;
+   font-weight: 600;
+ }
+ .w-btn {
+   background: linear-gradient(135deg, #a855f7, #ec4899);
+   color: #fff;
+   border: none;
+   padding: 14px 38px;
+   font-size: 16px;
+   font-weight: 700;
+   border-radius: 999px;
+   cursor: pointer;
+   box-shadow: 0 10px 28px rgba(236, 72, 153, 0.45);
+   transition: transform 0.2s, box-shadow 0.2s;
+ }
+ .w-btn:hover {
+   transform: translateY(-2px) scale(1.02);
+   box-shadow: 0 14px 34px rgba(236, 72, 153, 0.65);
+ }
+
+ /* --- 2. DARK BLUE + PURPLE/PINK DASHBOARD THEME --- */
+ header{
+   background: rgba(10, 13, 36, 0.9);
+   backdrop-filter: blur(10px);
+   padding:8px 18px;
+   border-bottom:1px solid var(--border);
+   display:flex;justify-content:space-between;align-items:center;min-height:56px;gap:10px;flex-wrap:wrap
+ }
+ .badge{
+   background: linear-gradient(135deg, #9333ea, #db2777);
+   color: #fff;
+   padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;
+   box-shadow: 0 2px 10px rgba(219, 39, 119, 0.35);
+ }
+ .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:5px;color:#050714}
+ .live{background:#34d399}.csv{background:#c084fc}.sim{background:#f472b6}
  #container{display:flex;height:calc(100vh - 62px)}
- #mapwrap{flex:1;display:flex;flex-direction:column;min-width:0}
- #controls{background:#0f172a;border-bottom:1px solid #1e293b;padding:8px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#cbd5e1}
- #controls label{cursor:pointer;display:flex;align-items:center;gap:4px}
- #map{flex:1}
- #panel{width:430px;background:#0f172a;border-left:1px solid #1e293b;padding:12px;overflow-y:auto}
+ #mapwrap{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+ #controls{
+   background: rgba(10, 13, 36, 0.88);
+   border-bottom:1px solid var(--border);
+   padding:9px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#e9d5ff
+ }
+ #controls label{
+   cursor:pointer;display:flex;align-items:center;gap:5px;
+   padding: 4px 9px;
+   border-radius: 6px;
+   background: rgba(192, 132, 252, 0.08);
+   border: 1px solid rgba(192, 132, 252, 0.18);
+   transition: all 0.15s;
+ }
+ #controls label:hover {
+   border-color: var(--pink);
+   background: rgba(244, 114, 182, 0.14);
+ }
+ #controls input[type=checkbox] { accent-color: var(--pink); }
+ #map{flex:1; background: #040611;}
+ #panel{
+   width:430px;
+   background: rgba(10, 13, 36, 0.86);
+   backdrop-filter: blur(12px);
+   border-left:1px solid var(--border);
+   padding:12px;overflow-y:auto
+ }
  @media(max-width:900px){#container{flex-direction:column;height:auto}#map{height:55vh;flex:none}#panel{width:100%}}
- .card{background:#1e293b;border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid #334155}
- .card h4{margin:0 0 8px;font-size:11px;color:#cbd5e1;letter-spacing:.4px}
- .btn{background:#ef4444;color:#fff;border:none;padding:6px 11px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px}
- .btn.alt{background:#334155}.btn.ok{background:#10b981;color:#06231a}.btn:disabled{opacity:.4;cursor:default}
+ .card{
+   background: var(--bg-card);
+   backdrop-filter: blur(8px);
+   border-radius:10px;padding:12px;margin-bottom:10px;
+   border:1px solid var(--border);
+   box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+ }
+ .card h4{margin:0 0 8px;font-size:11px;color:var(--pink);letter-spacing:.6px;text-transform:uppercase}
+ .btn{
+   background: linear-gradient(135deg, #a855f7, #ec4899);
+   color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;
+   transition: opacity 0.15s, transform 0.15s;
+ }
+ .btn:hover{opacity:0.92;transform:translateY(-1px)}
+ .btn.alt{background:#191e42;border:1px solid rgba(192,132,252,0.3);color:#e9d5ff}
+ .btn.ok{background:#10b981;color:#06231a}.btn:disabled{opacity:.4;cursor:default}
  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
- .kpi{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px;text-align:center}
- .kpi b{display:block;font-size:20px}.kpi span{font-size:10px;color:#94a3b8}
+ .kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+ .kpi b{display:block;font-size:20px;color:#f472b6}.kpi span{font-size:10px;color:#d8b4fe}
  table{width:100%;border-collapse:collapse;font-size:12px}
- td,th{padding:4px;text-align:left;border-bottom:1px solid #334155}
- tr.row{cursor:pointer}tr.row:hover{background:#273449}tr.sel{background:#2b3b55}
- .pill{padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#0a0f1d}
- .bar{height:7px;border-radius:4px;background:#334155;overflow:hidden;margin:3px 0 6px}.bar i{display:block;height:100%}
- .note{font-size:11px;color:#64748b;margin-top:6px;line-height:1.4}
+ td,th{padding:5px 4px;text-align:left;border-bottom:1px solid rgba(192,132,252,0.14)}
+ th{color:var(--purple);font-size:11px}
+ tr.row{cursor:pointer}tr.row:hover{background:rgba(192,132,252,0.12)}tr.sel{background:rgba(244,114,182,0.2)}
+ .pill{padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#050714}
+ .bar{height:7px;border-radius:4px;background:#191e42;overflow:hidden;margin:3px 0 6px}.bar i{display:block;height:100%}
+ .note{font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4}
  .flow{animation:dash 1.2s linear infinite}@keyframes dash{to{stroke-dashoffset:-20}}
  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
- input[type=range]{width:100%}input[type=number],select{background:#0f172a;color:#fff;border:1px solid #334155;border-radius:5px;padding:4px;width:100%;font-size:12px}
+ input[type=range]{width:100%;accent-color:var(--pink)}
+ input[type=number],select{background:#070a1c;color:#f5f3ff;border:1px solid var(--border);border-radius:5px;padding:5px;width:100%;font-size:12px}
  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
- .q{padding:7px 0;border-top:1px solid #334155;font-size:12px}.q:first-child{border-top:0}
- .steps{display:flex;gap:3px;margin:4px 0}.steps i{flex:1;height:5px;border-radius:3px;background:#334155}.steps i.on{background:#10b981}
- .mkr{position:relative;width:var(--s);height:var(--s);border-radius:50%;background:var(--c);border:2px solid #fff;color:#0a0f1d;font:800 11px/calc(var(--s) - 4px) system-ui,sans-serif;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.6)}
- .mkr.sel{outline:3px solid #38bdf8;outline-offset:2px}
+ .q{padding:7px 0;border-top:1px solid var(--border);font-size:12px}.q:first-child{border-top:0}
+ .steps{display:flex;gap:3px;margin:4px 0}.steps i{flex:1;height:5px;border-radius:3px;background:#191e42}.steps i.on{background:var(--pink)}
+ .mkr{position:relative;width:var(--s);height:var(--s);border-radius:50%;background:var(--c);border:2px solid #fff;color:#050714;font:800 11px/calc(var(--s) - 4px) system-ui,sans-serif;text-align:center;box-shadow:0 1px 8px rgba(0,0,0,.75)}
+ .mkr.sel{outline:3px solid var(--pink);outline-offset:2px}
  .mkr.crit::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--c);animation:pr 1.6s ease-out infinite}
  @keyframes pr{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
- .mkl{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 10px system-ui,sans-serif;color:#e2e8f0;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:3px;pointer-events:none}
- .mtip{background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:12px;line-height:1.5}
- .leaflet-tooltip-top.mtip::before{border-top-color:#0f172a}
- .maplegend,.mapchip{background:rgba(15,23,42,.92);color:#e2e8f0;padding:8px 10px;border-radius:8px;border:1px solid #334155;font-size:11px;line-height:1.7}
- .mapchip{font-size:12px;font-weight:700;color:#fff}
- #banner{display:none;cursor:pointer;background:#7f1d1d;color:#fecaca;padding:7px 18px;font-size:13px;font-weight:600}
- #ac{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:5000;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
- #bell.hot{background:#ef4444}
- #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#10b981;color:#06231a;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
- .sm{font-size:12px;color:#cbd5e1}
+ .mkl{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 10px system-ui,sans-serif;color:#f5f3ff;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:3px;pointer-events:none}
+ .mtip{background:#0a0d24;color:#f5f3ff;border:1px solid var(--purple);font-size:12px;line-height:1.5}
+ .leaflet-tooltip-top.mtip::before{border-top-color:#0a0d24}
+ .maplegend,.mapchip{background:rgba(10,13,36,.92);color:#f5f3ff;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:11px;line-height:1.7}
+ .mapchip{font-size:12px;font-weight:700;color:var(--pink)}
+ #mapHint{
+   position:absolute;top:56px;left:50%;transform:translateX(-50%);
+   z-index:1000;background:rgba(10,13,36,0.92);border:1px solid var(--pink);
+   color:#f5f3ff;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:600;
+   box-shadow:0 6px 20px rgba(0,0,0,0.6);pointer-events:none;transition:opacity 0.3s;
+ }
+ #banner{display:none;cursor:pointer;background:linear-gradient(90deg,#4c0519,#831843);color:#fbcfe8;padding:7px 18px;font-size:13px;font-weight:600;border-bottom:1px solid var(--pink)}
+ #ac{display:none;position:fixed;inset:0;background:rgba(5,7,20,.78);backdrop-filter:blur(6px);z-index:5000;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
+ #bell.hot{background:#ec4899;color:#fff}
+ #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pink);color:#050714;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
+ .sm{font-size:12px;color:#e9d5ff}
 </style>
 </head>
 <body>
+
+<!-- WELCOME SCREEN -->
+<div id="welcome">
+  <div class="w-card">
+    <div class="w-radar">&#128225;</div>
+    <div><span class="badge">Hack4Pashudhan &middot; Team ID: H4P-VC587GBK</span></div>
+    <h1 class="w-title">Spillover Radar</h1>
+    <p class="w-sub">
+      One Health AI Surveillance &amp; Early Outbreak Detection Platform.<br>
+      Built by <strong style="color:#f472b6">VetTech Trio</strong> (Parth Kantharia, Priyal Kantharia, Rahul Bhojkar).
+    </p>
+    <div class="w-pills">
+      <span class="w-pill">&#129440; Zoonotic Risk Scoring</span>
+      <span class="w-pill">&#127782;&#65039; Live Climate Anomaly</span>
+      <span class="w-pill">&#129302; Isolation Forest + CUSUM</span>
+      <span class="w-pill">&#128680; 48h Vet Dispatch Queue</span>
+    </div>
+    <button class="w-btn" onclick="startApp()">Get Started &rarr;</button>
+  </div>
+</div>
+
 <header>
   <div>
     <span class="badge">Team ID: H4P-VC587GBK</span>
-    <strong style="margin-left:10px;color:#38bdf8">&#128225; Spillover Radar</strong>
-    <span style="color:#94a3b8;font-size:12px;margin-left:8px">VetTech Trio</span>
+    <strong style="margin-left:10px;color:#f472b6">&#128225; Spillover Radar</strong>
+    <span style="color:#c084fc;font-size:12px;margin-left:8px">VetTech Trio</span>
   </div>
   <div class="sm"><span id="fresh"></span><span id="chips"></span>
     <button class="btn alt" id="bell" onclick="openAC()" title="Alert Center">&#128276; <b id="bellN">0</b></button>
@@ -471,21 +673,23 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <button class="btn" onclick="sitrep()"><span data-i="sitrep">Situation report</span></button>
   </div>
 </header>
-<div id="scn" style="display:none;background:#78350f;color:#fde68a;padding:6px 18px;font-size:12px"></div>
+<div id="scn" style="display:none;background:#4a044e;color:#f5d0fe;padding:6px 18px;font-size:12px"></div>
 <div id="banner" onclick="openAC()"></div>
 <div id="container">
   <div id="mapwrap">
     <div id="controls">
-      <label><input type="checkbox" id="lMarkers" checked> Markers</label>
-      <label><input type="checkbox" id="lHeat" checked> Heatmap</label>
+      <span style="color:#f472b6;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Map Layers:</span>
+      <label><input type="checkbox" id="lMarkers"> Markers</label>
+      <label><input type="checkbox" id="lHeat"> Heatmap</label>
       <label><input type="checkbox" id="lBuf"> 5 km buffers</label>
-      <label><input type="checkbox" id="lCor" checked> Corridors</label>
-      <label><input type="checkbox" id="lLab" checked> Labels</label>
+      <label><input type="checkbox" id="lCor"> Corridors</label>
+      <label><input type="checkbox" id="lLab"> Labels</label>
       <span style="margin-left:auto"></span>
       <button class="btn alt" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
       <input type="range" id="week" min="0" max="7" value="7" style="width:150px">
-      <b id="weekLbl" style="min-width:42px"></b>
+      <b id="weekLbl" style="min-width:42px;color:#f472b6"></b>
     </div>
+    <div id="mapHint">&#10024; Plain map mode: Select layers above one by one (or click a district on the right) to display details</div>
     <div id="map"></div>
   </div>
   <div id="panel">
@@ -497,12 +701,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
 
     <div class="card">
-      <h3 id="dName" style="margin:0 0 4px;color:#38bdf8"></h3>
+      <h3 id="dName" style="margin:0 0 4px;color:#f472b6"></h3>
       <div id="dStatus" class="sm"></div>
       <div style="display:flex;align-items:baseline;gap:10px"><div id="dScore" style="font-size:32px;font-weight:bold;margin:6px 0 2px">--</div><div id="dWhat" class="sm"></div></div>
       <div id="dMeta" class="sm"></div><div id="dGap" class="sm" style="color:#f59e0b"></div>
       <svg id="spark" viewBox="0 0 380 96" width="100%" style="margin-top:6px"></svg>
-      <div class="note">Blue: risk &middot; dashed blue: 2-wk trend extrapolation &middot; purple dashed: human fever (scaled) &middot; red line: 70.</div>
+      <div class="note">Pink: risk &middot; dashed pink: 2-wk trend extrapolation &middot; purple dashed: human fever (scaled) &middot; red line: 70.</div>
       <div id="dTrend" class="sm" style="margin-top:4px"></div>
       <div style="margin-top:8px"><span class="sm">What-if ring vaccination: +<b id="vxv">0</b>% coverage</span>
         <input type="range" id="vx" min="0" max="40" value="0"></div>
@@ -519,7 +723,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="note">Attribution = how much more normal the district looks when that indicator is set to the median. Association, not causation.</div>
     </div>
 
-    <div class="card"><h4 style="color:#f59e0b" data-i="protocol">ACTIONABLE VETERINARY PROTOCOL</h4><p id="dAction" class="sm" style="margin:0"></p></div>
+    <div class="card"><h4 style="color:#f472b6" data-i="protocol">ACTIONABLE VETERINARY PROTOCOL</h4><p id="dAction" class="sm" style="margin:0"></p></div>
 
     <div class="card"><h4 data-i="queue">48-HOUR RESPONSE QUEUE</h4><div id="alerts"></div></div>
 
@@ -568,19 +772,33 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 </div>
 <div id="ac" onclick="if(event.target===this)closeAC()">
- <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;max-width:760px;width:100%;padding:16px">
+ <div style="background:#0a0d24;border:1px solid var(--border);border-radius:12px;max-width:760px;width:100%;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-   <h3 style="margin:0">&#128680; <span data-i="ac_title">Alert Center</span></h3>
+   <h3 style="margin:0;color:#f472b6">&#128680; <span data-i="ac_title">Alert Center</span></h3>
    <div><button class="btn alt" onclick="simulate()" data-i="ac_sim">Simulate field-report surge</button>
         <button class="btn alt" onclick="askNotif()" data-i="ac_notif">Enable desktop notifications</button>
         <button class="btn alt" onclick="closeAC()">&#10005;</button></div></div>
   <div class="note" id="acHelp"></div>
   <div id="acList" style="margin-top:6px"></div>
-  <h4 style="margin:12px 0 4px;font-size:11px;color:#cbd5e1" data-i="log">ACTIVITY LOG</h4><div id="acEvents" class="sm"></div>
+  <h4 style="margin:12px 0 4px;font-size:11px;color:#f472b6" data-i="log">ACTIVITY LOG</h4><div id="acEvents" class="sm"></div>
  </div></div>
 <div id="toast"></div>
 <script>
 const $ = id => document.getElementById(id);
+
+function startApp() {
+  $('welcome').classList.add('hide');
+  setTimeout(() => {
+    $('welcome').style.display = 'none';
+    if (window.map) { map.invalidateSize(); fitAll(); }
+  }, 450);
+}
+
+function updateHint() {
+  const anyOn = ['lMarkers','lHeat','lBuf','lCor','lLab'].some(id => $(id) && $(id).checked);
+  if ($('mapHint')) $('mapHint').style.opacity = anyOn ? '0' : '1';
+}
+
 const I18N = {
  en: { crit:'CRITICAL', watch:'WATCH', normal:'NORMAL', status:'Status', refresh:'Refresh', sitrep:'Situation report', k_crit:'CRITICAL', k_watch:'WATCH', k_ad:'ANIMAL DEATHS', k_hf:'HUMAN FEVER',
   why:'WHY IS IT FLAGGED? TWO VIEWS', protocol:'ACTIONABLE VETERINARY PROTOCOL', queue:'48-HOUR RESPONSE QUEUE', report:'FIELD REPORT INTAKE (live)', expo:'CORRIDOR EXPOSURE INDEX (downstream spread risk)',
@@ -624,7 +842,7 @@ const colorFor = s => s >= 70 ? '#ef4444' : s >= 40 ? '#f59e0b' : '#10b981';
 const statusFor = s => s >= 70 ? 'CRITICAL' : s >= 40 ? 'WATCH' : 'NORMAL';
 const actionFor = st => T('act_' + st.toLowerCase());
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(m, bad) { const t = $('toast'); t.textContent = m; t.style.background = bad ? '#ef4444' : '#10b981'; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3200); }
+function toast(m, bad) { const t = $('toast'); t.textContent = m; t.style.background = bad ? '#ef4444' : '#f472b6'; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3200); }
 
 const score = (d, w, vc) => {
   const v = Math.min(1, d.vet[w] / REF[0]), c = Math.min(1, d.clim[w] / REF[1]),
@@ -655,10 +873,11 @@ function initMap() {
   let tErr = 0;
   dark.on('tileerror', () => { if (++tErr === 4 && map.hasLayer(dark)) { map.removeLayer(dark); street.addTo(map); toast('Dark basemap unavailable - switched to OpenStreetMap', true); } });
   L.control.layers({ 'Dark (Esri)': dark, 'Street (OSM)': street }, null, { position: 'topright' }).addTo(map);
-  grp.markers = L.layerGroup().addTo(map); grp.buf = L.layerGroup(); grp.cor = L.layerGroup().addTo(map);
+  // Start with plain map: layerGroups are created but NOT added to map until user checks them
+  grp.markers = L.layerGroup(); grp.buf = L.layerGroup(); grp.cor = L.layerGroup();
   L.control.scale({ metric: true, imperial: false, position: 'bottomright' }).addTo(map);
   const lg = L.control({ position: 'bottomleft' });
-  lg.onAdd = () => { const el = L.DomUtil.create('div', 'maplegend'); el.innerHTML = '<b>Risk</b><br><i class="dot" style="background:#ef4444"></i>Critical \u226570 (pulsing = open alert)<br><i class="dot" style="background:#f59e0b"></i>Watch 40\u201369<br><i class="dot" style="background:#10b981"></i>Normal &lt;40<br><span style="color:#94a3b8">Number = risk score \u00B7 size = score<br>Line width = livestock volume</span>'; return el; };
+  lg.onAdd = () => { const el = L.DomUtil.create('div', 'maplegend'); el.innerHTML = '<b>Risk</b><br><i class="dot" style="background:#ef4444"></i>Critical \u226570 (pulsing = open alert)<br><i class="dot" style="background:#f59e0b"></i>Watch 40\u201369<br><i class="dot" style="background:#10b981"></i>Normal &lt;40<br><span style="color:#a5b4fc">Number = risk score \u00B7 size = score<br>Line width = livestock volume</span>'; return el; };
   lg.addTo(map);
   const hc = L.control({ position: 'topleft' });
   hc.onAdd = () => { const el = L.DomUtil.create('div', 'leaflet-bar'); el.innerHTML = '<a href="#" title="Fit all districts" id="fitAll">\u25A3</a><a href="#" title="Zoom to critical districts" id="fitCrit">\u26A0</a>'; L.DomEvent.disableClickPropagation(el); return el; };
@@ -676,11 +895,14 @@ function initMap() {
     const line = L.polyline(curve(a, b), { weight: 1.5 + c.vol * 3, dashArray: '8 6', className: 'flow', opacity: .85 }).addTo(grp.cor);
     corridors.push({ c, line }); });
   $('rDist').innerHTML = D.map(d => '<option value="' + esc(d.name) + '">' + esc(d.name) + ', ' + esc(d.state) + '</option>').join('');
-  const tg = (id, key) => $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); });
-  tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor'); $('lLab').addEventListener('change', render);
-  $('lHeat').addEventListener('change', e => { if (!heat) return; e.target.checked ? heat.addTo(map) : map.removeLayer(heat); });
-  // optional: put the official India boundary (e.g. Survey of India GeoJSON) at data/india_boundary.geojson
-  fetch('data/india_boundary.geojson').then(r => r.ok ? r.json() : null).then(g => { if (g) L.geoJSON(g, { style: { color: '#38bdf8', weight: 1.5, fill: false }, interactive: false }).addTo(map); }).catch(() => {});
+  const tg = (id, key) => $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); updateHint(); });
+  tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor');
+  $('lLab').addEventListener('change', e => {
+    if (e.target.checked && !$('lMarkers').checked) { $('lMarkers').checked = true; grp.markers.addTo(map); }
+    updateHint(); render();
+  });
+  $('lHeat').addEventListener('change', e => { updateHint(); if (!heat) return; e.target.checked ? heat.addTo(map) : map.removeLayer(heat); });
+  fetch('data/india_boundary.geojson').then(r => r.ok ? r.json() : null).then(g => { if (g) L.geoJSON(g, { style: { color: '#c084fc', weight: 1.5, fill: false }, interactive: false }).addTo(map); }).catch(() => {});
   setTimeout(() => { map.invalidateSize(); fitAll(); }, 250);
 }
 
@@ -708,7 +930,7 @@ function render() {
   if ($('mapchip')) $('mapchip').innerHTML = '\u{1F6A8} ' + crit + ' ' + lbl('crit').toLowerCase() + ' \u00B7 ' + watch + ' ' + lbl('watch').toLowerCase() + ' \u00B7 ' + P.weeks[wk];
   $('kCrit').innerText = crit; $('kWatch').innerText = watch; $('kAnimal').innerText = an; $('kHuman').innerText = hu;
   if (L.heatLayer) { if (heat) map.removeLayer(heat);
-    heat = L.heatLayer(pts, { radius: 55, blur: 40, minOpacity: .3, gradient: { .3: '#10b981', .55: '#f59e0b', .8: '#ef4444' } });
+    heat = L.heatLayer(pts, { radius: 55, blur: 40, minOpacity: .3, gradient: { .3: '#10b981', .55: '#c084fc', .8: '#ec4899' } });
     if ($('lHeat').checked) heat.addTo(map); }
   const ex = exposureMap();
   corridors.forEach(({ c, line }) => { const a = byId[c.from], b = byId[c.to], hot = Math.max(a.S[wk], b.S[wk]), sl = selected && (c.from === selected || c.to === selected);
@@ -725,8 +947,13 @@ function render() {
   if (!selected) selected = D.slice().sort((x, y) => y.S[LAST] - x.S[LAST])[0].id;
   showDistrict(byId[selected]); renderAlerts(); renderMeta();
 }
-function select(id) { selected = id; vaxPlus = 0; $('vx').value = 0; render(); const d = byId[id]; map.panTo([d.lat, d.lon]); }
-function zoomBuf() { $('lBuf').checked = true; grp.buf.addTo(map); map.fitBounds(buffers[selected].getBounds(), { maxZoom: 12 }); }
+function select(id) {
+  selected = id; vaxPlus = 0; $('vx').value = 0;
+  if (!$('lMarkers').checked) { $('lMarkers').checked = true; grp.markers.addTo(map); updateHint(); }
+  render();
+  const d = byId[id]; map.panTo([d.lat, d.lon]);
+}
+function zoomBuf() { $('lBuf').checked = true; grp.buf.addTo(map); updateHint(); map.fitBounds(buffers[selected].getBounds(), { maxZoom: 12 }); }
 
 function showDistrict(d) {
   const s = d.S[wk], st = statusFor(s), tr = trend(d);
@@ -736,21 +963,21 @@ function showDistrict(d) {
   const si = score(d, wk, Math.min(1, d.vax_cov + vaxPlus / 100));
   $('vxv').innerText = vaxPlus; $('dWhat').innerHTML = vaxPlus ? 'with vaccination: <b style="color:' + colorFor(si) + '">' + si + '</b> (' + (si - s).toFixed(1) + ')' : '';
   $('dMeta').innerText = 'Human fever: ' + d.human[wk] + ' | Vax coverage: ' + Math.round(d.vax_cov * 100) + '% | Temp spike: ' + d.temp[wk] + '\u00B0C | Rain deficit: ' + d.rain[wk] + '%';
-  $('dFactors').innerHTML = shareOf(d, wk).map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#38bdf8"></i></div>').join('');
-  $('dMl').innerHTML = d.ml_shares.map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#a78bfa"></i></div>').join('');
+  $('dFactors').innerHTML = shareOf(d, wk).map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#f472b6"></i></div>').join('');
+  $('dMl').innerHTML = d.ml_shares.map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#c084fc"></i></div>').join('');
   $('dDet').innerHTML = 'Isolation Forest: <b>' + d.ml_score[wk] + '</b>/100' + (d.ml_anomaly ? ' <span class="pill" style="background:#ef4444">ANOMALY</span>' : '') +
     ' &middot; CUSUM change-point: <b>' + (d.cusum_week == null ? 'none' : P.weeks[d.cusum_week]) + '</b>';
   $('dAction').innerText = actionFor(st);
   $('dGap').innerText = T('compl') + ': ' + d.complete + '%' + ((d.gap || d.complete < 70) ? ' \u26A0 ' + T('gapwarn') : '');
   $('dTrend').innerHTML = 'Trend ' + (tr.m >= 0 ? '+' : '') + tr.m.toFixed(1) + '/wk \u00B7 projected ' + tr.pts.map(v => Math.round(v)).join(' \u2192 ') +
-    (tr.toCrit ? ' \u00B7 <b style="color:#f59e0b">could reach CRITICAL in ~' + tr.toCrit + ' wk</b>' : '') + ' <span style="color:#64748b">(linear extrapolation)</span>';
+    (tr.toCrit ? ' \u00B7 <b style="color:#f59e0b">could reach CRITICAL in ~' + tr.toCrit + ' wk</b>' : '') + ' <span style="color:#a5b4fc">(linear extrapolation)</span>';
   const Wd = 380, H = 96, n = d.S.length + 2, hmax = Math.max(1, ...d.human);
   const x = i => 10 + i * (Wd - 20) / (n - 1), ys = v => H - 8 - v / 100 * (H - 16), yh = v => H - 8 - v / hmax * (H - 16);
   const l1 = d.S.map((v, i) => x(i) + ',' + ys(v)).join(' '), l2 = d.human.map((v, i) => x(i) + ',' + yh(v)).join(' ');
   const l3 = [d.S[d.S.length - 1]].concat(tr.pts).map((v, i) => x(d.S.length - 1 + i) + ',' + ys(v)).join(' ');
   $('spark').innerHTML = '<line x1="10" x2="370" y1="' + ys(70) + '" y2="' + ys(70) + '" stroke="#ef4444" stroke-dasharray="3 4" opacity=".5"/>' +
-    '<polyline fill="none" stroke="#38bdf8" stroke-width="2" points="' + l1 + '"/><polyline fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="2 4" points="' + l3 + '"/>' +
-    '<polyline fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4 3" points="' + l2 + '"/>' +
+    '<polyline fill="none" stroke="#f472b6" stroke-width="2" points="' + l1 + '"/><polyline fill="none" stroke="#f472b6" stroke-width="2" stroke-dasharray="2 4" points="' + l3 + '"/>' +
+    '<polyline fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="4 3" points="' + l2 + '"/>' +
     (d.cusum_week != null ? '<line x1="' + x(d.cusum_week) + '" x2="' + x(d.cusum_week) + '" y1="4" y2="' + (H - 6) + '" stroke="#f59e0b" opacity=".7"/>' : '') +
     (P.scenario && P.scenario.focus_district === d.name && P.scenario.confirmed_idx != null ? '<line x1="' + x(P.scenario.confirmed_idx) + '" x2="' + x(P.scenario.confirmed_idx) + '" y1="4" y2="' + (H - 6) + '" stroke="#10b981" stroke-width="2"/>' : '') +
     '<circle cx="' + x(wk) + '" cy="' + ys(d.S[wk]) + '" r="4" fill="' + colorFor(s) + '" stroke="#fff"/>';
@@ -784,7 +1011,7 @@ function renderAC() {
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start"><button class="btn alt" onclick="closeAC();select(\'' + a.id + '\')">' + T('ac_map') + '</button><button class="btn alt" onclick="copyFor(\'' + a.id + '\')">' + T('ac_copy') + '</button>' +
       '<button class="btn ok" ' + (a.step >= P.steps.length - 1 ? 'disabled' : '') + ' onclick="ack(\'' + a.id + '\')">' + T('adv') + ' &rsaquo;</button></div></div>' +
       '<div class="steps">' + P.steps.map((_, k) => '<i class="' + (k <= a.step ? 'on' : '') + '"></i>').join('') + '</div></div>'; }).join('') : '<div class="sm">' + T('noalert') + '</div>';
-  $('acEvents').innerHTML = P.events.slice(0, 10).map(e => '<div style="margin:2px 0"><span style="color:#64748b">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || '-';
+  $('acEvents').innerHTML = P.events.slice(0, 10).map(e => '<div style="margin:2px 0"><span style="color:#a5b4fc">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || '-';
 }
 function openAC() { $('ac').style.display = 'flex'; renderAC(); }
 function closeAC() { $('ac').style.display = 'none'; }
@@ -799,18 +1026,18 @@ async function simulate() { const c = D.filter(d => !P.alerts.some(a => a.id ===
 function renderMeta() {
   $('fresh').innerText = 'Updated ' + new Date(P.generated_at).toLocaleTimeString();
   $('chips').innerHTML = P.sources.map(s => '<span class="chip ' + (/^live/.test(s.mode) ? 'live' : /^(CSV|scenario)/.test(s.mode) ? 'csv' : 'sim') + '" title="' + esc(s.feed + ' \u2014 ' + s.detail) + '">' + esc(s.sector) + ': ' + esc(s.mode.split(' (')[0]) + '</span>').join('');
-  $('events').innerHTML = P.events.slice(0, 8).map(e => '<div style="margin:2px 0"><span style="color:#64748b">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || 'No activity yet.';
+  $('events').innerHTML = P.events.slice(0, 8).map(e => '<div style="margin:2px 0"><span style="color:#a5b4fc">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || 'No activity yet.';
   const L2 = P.lead, f = v => v == null ? 'n/a' : v.toFixed(1) + ' wk';
   $('leadBox').innerHTML = 'Animal-side CUSUM change-point precedes the human-case change-point by a median of <b>' + f(L2.cusum_median) + '</b> (n=' + L2.n + ' districts with both signals).';
   const mx = Math.max(.01, ...P.lag.stats.map(s => Math.abs(s.r)));
-  $('lagBox').innerHTML = P.lag.stats.map(s => '<div class="sm">Lag ' + s.lag + ' wk \u2014 r = ' + s.r + (s.lag === P.lag.best ? ' \u2605' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, s.r) / mx * 100 + '%;background:' + (s.lag === P.lag.best ? '#a78bfa' : '#475569') + '"></i></div>').join('');
+  $('lagBox').innerHTML = P.lag.stats.map(s => '<div class="sm">Lag ' + s.lag + ' wk \u2014 r = ' + s.r + (s.lag === P.lag.best ? ' \u2605' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, s.r) / mx * 100 + '%;background:' + (s.lag === P.lag.best ? '#f472b6' : '#c084fc') + '"></i></div>').join('');
   const sim = P.sources.some(s => s.mode.startsWith('simulated')), sc = P.scenario;
   $('evNote').innerText = sc ? (sc.illustrative ? 'ILLUSTRATIVE replay on synthetic data: demonstrates the method only. ' : 'Retrospective replay of a documented case: ') + (sc.source ? 'Source: ' + sc.source + '.' : '')
     : sim ? 'Computed on SIMULATED series built with a ' + P.lag.assumed + '-week lag: validates the pipeline, not the biology. Load real data via data/surveillance.csv.' : 'Computed on supplied data. Treat as retrospective evidence, not a forecast guarantee.';
   const sb = $('scn');
   if (sc) { sb.style.display = 'block'; sb.innerHTML = '<b>CASE REPLAY:</b> ' + esc(sc.title || '') + (sc.illustrative ? ' \u2014 synthetic, for demonstration' : '') + ' \u00B7 use the week slider / Play to watch the detection unfold'; 
     if (sc.confirmed_idx != null) { const w = i => i == null ? 'not flagged' : P.weeks[i], lr = sc.lead_radar, lc = sc.lead_cusum;
-      $('leadBox').innerHTML += '<div style="margin-top:6px;border-top:1px solid #334155;padding-top:6px"><b>Replay \u2014 ' + esc(sc.focus_district || '') + ':</b> radar flag (\u226540) ' + w(sc.radar_idx) + ', CUSUM change-point ' + w(sc.cusum_idx) +
+      $('leadBox').innerHTML += '<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px"><b>Replay \u2014 ' + esc(sc.focus_district || '') + ':</b> radar flag (\u226540) ' + w(sc.radar_idx) + ', CUSUM change-point ' + w(sc.cusum_idx) +
       ', official confirmation <b style="color:#10b981">' + P.weeks[sc.confirmed_idx] + '</b> \u2192 radar lead <b>' + (lr == null ? 'n/a' : lr + ' wk') + '</b>, CUSUM lead <b>' + (lc == null ? 'n/a' : lc + ' wk') + '</b></div>'; } }
   else sb.style.display = 'none';
 }

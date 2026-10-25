@@ -8,60 +8,259 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
+ :root {
+   --bg-deep: #050714;
+   --bg-panel: #0a0d24;
+   --bg-card: rgba(17, 22, 51, 0.78);
+   --border: rgba(192, 132, 252, 0.22);
+   --purple: #c084fc;
+   --pink: #f472b6;
+   --text-main: #f5f3ff;
+   --text-muted: #a5b4fc;
+ }
  *{box-sizing:border-box}
- body{margin:0;font-family:-apple-system,'Segoe UI',sans-serif;background:#0a0f1d;color:#fff}
- header{background:#0f172a;padding:8px 18px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;min-height:56px;gap:10px;flex-wrap:wrap}
- .badge{background:#0284c7;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold}
- .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:5px;color:#0a0f1d}
- .live{background:#10b981}.csv{background:#38bdf8}.sim{background:#fbbf24}
+ body{
+   margin:0;
+   font-family:'Inter',-apple-system,'Segoe UI',sans-serif;
+   background-color: var(--bg-deep);
+   background-image: 
+     radial-gradient(circle at 15% 20%, rgba(192, 132, 252, 0.12) 0%, transparent 40%),
+     radial-gradient(circle at 85% 80%, rgba(244, 114, 182, 0.10) 0%, transparent 40%),
+     radial-gradient(rgba(192, 132, 252, 0.14) 1px, transparent 1px);
+   background-size: 100% 100%, 100% 100%, 22px 22px;
+   color: var(--text-main);
+ }
+
+ /* --- 1. WELCOME PAGE OVERLAY --- */
+ #welcome {
+   position: fixed;
+   inset: 0;
+   z-index: 9000;
+   background-color: #040612;
+   background-image: 
+     radial-gradient(circle at 50% 35%, rgba(192, 132, 252, 0.20) 0%, rgba(244, 114, 182, 0.08) 35%, transparent 70%),
+     radial-gradient(rgba(244, 114, 182, 0.16) 1px, transparent 1px);
+   background-size: 100% 100%, 26px 26px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 24px;
+   transition: opacity 0.45s ease, transform 0.45s ease;
+ }
+ #welcome.hide {
+   opacity: 0;
+   transform: scale(1.04);
+   pointer-events: none;
+ }
+ .w-card {
+   max-width: 650px;
+   width: 100%;
+   background: rgba(10, 13, 36, 0.82);
+   backdrop-filter: blur(16px);
+   border: 1px solid rgba(192, 132, 252, 0.35);
+   border-radius: 20px;
+   padding: 42px 34px;
+   text-align: center;
+   box-shadow: 0 24px 60px rgba(0,0,0,0.75), 0 0 40px rgba(192, 132, 252, 0.15);
+ }
+ .w-radar {
+   width: 78px;
+   height: 78px;
+   margin: 0 auto 20px;
+   border-radius: 50%;
+   background: radial-gradient(circle, rgba(244,114,182,0.35), rgba(192,132,252,0.08));
+   border: 2px solid var(--pink);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 34px;
+   position: relative;
+   box-shadow: 0 0 25px rgba(244,114,182,0.4);
+ }
+ .w-radar::after {
+   content: '';
+   position: absolute;
+   inset: -8px;
+   border-radius: 50%;
+   border: 2px solid var(--purple);
+   animation: pr 2s ease-out infinite;
+ }
+ .w-title {
+   font-size: 40px;
+   font-weight: 800;
+   margin: 14px 0 10px;
+   background: linear-gradient(90deg, #f5f3ff, #e879f9, #f472b6);
+   -webkit-background-clip: text;
+   -webkit-text-fill-color: transparent;
+   letter-spacing: -0.5px;
+ }
+ .w-sub {
+   color: #cbd5e1;
+   font-size: 15px;
+   line-height: 1.6;
+   max-width: 520px;
+   margin: 0 auto 24px;
+ }
+ .w-pills {
+   display: flex;
+   gap: 10px;
+   justify-content: center;
+   flex-wrap: wrap;
+   margin-bottom: 30px;
+ }
+ .w-pill {
+   background: rgba(192, 132, 252, 0.12);
+   border: 1px solid rgba(192, 132, 252, 0.3);
+   color: #e9d5ff;
+   padding: 7px 14px;
+   border-radius: 999px;
+   font-size: 12px;
+   font-weight: 600;
+ }
+ .w-btn {
+   background: linear-gradient(135deg, #a855f7, #ec4899);
+   color: #fff;
+   border: none;
+   padding: 14px 38px;
+   font-size: 16px;
+   font-weight: 700;
+   border-radius: 999px;
+   cursor: pointer;
+   box-shadow: 0 10px 28px rgba(236, 72, 153, 0.45);
+   transition: transform 0.2s, box-shadow 0.2s;
+ }
+ .w-btn:hover {
+   transform: translateY(-2px) scale(1.02);
+   box-shadow: 0 14px 34px rgba(236, 72, 153, 0.65);
+ }
+
+ /* --- 2. DARK BLUE + PURPLE/PINK DASHBOARD THEME --- */
+ header{
+   background: rgba(10, 13, 36, 0.9);
+   backdrop-filter: blur(10px);
+   padding:8px 18px;
+   border-bottom:1px solid var(--border);
+   display:flex;justify-content:space-between;align-items:center;min-height:56px;gap:10px;flex-wrap:wrap
+ }
+ .badge{
+   background: linear-gradient(135deg, #9333ea, #db2777);
+   color: #fff;
+   padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;
+   box-shadow: 0 2px 10px rgba(219, 39, 119, 0.35);
+ }
+ .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:5px;color:#050714}
+ .live{background:#34d399}.csv{background:#c084fc}.sim{background:#f472b6}
  #container{display:flex;height:calc(100vh - 62px)}
- #mapwrap{flex:1;display:flex;flex-direction:column;min-width:0}
- #controls{background:#0f172a;border-bottom:1px solid #1e293b;padding:8px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#cbd5e1}
- #controls label{cursor:pointer;display:flex;align-items:center;gap:4px}
- #map{flex:1}
- #panel{width:430px;background:#0f172a;border-left:1px solid #1e293b;padding:12px;overflow-y:auto}
+ #mapwrap{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+ #controls{
+   background: rgba(10, 13, 36, 0.88);
+   border-bottom:1px solid var(--border);
+   padding:9px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#e9d5ff
+ }
+ #controls label{
+   cursor:pointer;display:flex;align-items:center;gap:5px;
+   padding: 4px 9px;
+   border-radius: 6px;
+   background: rgba(192, 132, 252, 0.08);
+   border: 1px solid rgba(192, 132, 252, 0.18);
+   transition: all 0.15s;
+ }
+ #controls label:hover {
+   border-color: var(--pink);
+   background: rgba(244, 114, 182, 0.14);
+ }
+ #controls input[type=checkbox] { accent-color: var(--pink); }
+ #map{flex:1; background: #040611;}
+ #panel{
+   width:430px;
+   background: rgba(10, 13, 36, 0.86);
+   backdrop-filter: blur(12px);
+   border-left:1px solid var(--border);
+   padding:12px;overflow-y:auto
+ }
  @media(max-width:900px){#container{flex-direction:column;height:auto}#map{height:55vh;flex:none}#panel{width:100%}}
- .card{background:#1e293b;border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid #334155}
- .card h4{margin:0 0 8px;font-size:11px;color:#cbd5e1;letter-spacing:.4px}
- .btn{background:#ef4444;color:#fff;border:none;padding:6px 11px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px}
- .btn.alt{background:#334155}.btn.ok{background:#10b981;color:#06231a}.btn:disabled{opacity:.4;cursor:default}
+ .card{
+   background: var(--bg-card);
+   backdrop-filter: blur(8px);
+   border-radius:10px;padding:12px;margin-bottom:10px;
+   border:1px solid var(--border);
+   box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+ }
+ .card h4{margin:0 0 8px;font-size:11px;color:var(--pink);letter-spacing:.6px;text-transform:uppercase}
+ .btn{
+   background: linear-gradient(135deg, #a855f7, #ec4899);
+   color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;
+   transition: opacity 0.15s, transform 0.15s;
+ }
+ .btn:hover{opacity:0.92;transform:translateY(-1px)}
+ .btn.alt{background:#191e42;border:1px solid rgba(192,132,252,0.3);color:#e9d5ff}
+ .btn.ok{background:#10b981;color:#06231a}.btn:disabled{opacity:.4;cursor:default}
  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
- .kpi{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px;text-align:center}
- .kpi b{display:block;font-size:20px}.kpi span{font-size:10px;color:#94a3b8}
+ .kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+ .kpi b{display:block;font-size:20px;color:#f472b6}.kpi span{font-size:10px;color:#d8b4fe}
  table{width:100%;border-collapse:collapse;font-size:12px}
- td,th{padding:4px;text-align:left;border-bottom:1px solid #334155}
- tr.row{cursor:pointer}tr.row:hover{background:#273449}tr.sel{background:#2b3b55}
- .pill{padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#0a0f1d}
- .bar{height:7px;border-radius:4px;background:#334155;overflow:hidden;margin:3px 0 6px}.bar i{display:block;height:100%}
- .note{font-size:11px;color:#64748b;margin-top:6px;line-height:1.4}
+ td,th{padding:5px 4px;text-align:left;border-bottom:1px solid rgba(192,132,252,0.14)}
+ th{color:var(--purple);font-size:11px}
+ tr.row{cursor:pointer}tr.row:hover{background:rgba(192,132,252,0.12)}tr.sel{background:rgba(244,114,182,0.2)}
+ .pill{padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#050714}
+ .bar{height:7px;border-radius:4px;background:#191e42;overflow:hidden;margin:3px 0 6px}.bar i{display:block;height:100%}
+ .note{font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4}
  .flow{animation:dash 1.2s linear infinite}@keyframes dash{to{stroke-dashoffset:-20}}
  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
- input[type=range]{width:100%}input[type=number],select{background:#0f172a;color:#fff;border:1px solid #334155;border-radius:5px;padding:4px;width:100%;font-size:12px}
+ input[type=range]{width:100%;accent-color:var(--pink)}
+ input[type=number],select{background:#070a1c;color:#f5f3ff;border:1px solid var(--border);border-radius:5px;padding:5px;width:100%;font-size:12px}
  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
- .q{padding:7px 0;border-top:1px solid #334155;font-size:12px}.q:first-child{border-top:0}
- .steps{display:flex;gap:3px;margin:4px 0}.steps i{flex:1;height:5px;border-radius:3px;background:#334155}.steps i.on{background:#10b981}
- .mkr{position:relative;width:var(--s);height:var(--s);border-radius:50%;background:var(--c);border:2px solid #fff;color:#0a0f1d;font:800 11px/calc(var(--s) - 4px) system-ui,sans-serif;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.6)}
- .mkr.sel{outline:3px solid #38bdf8;outline-offset:2px}
+ .q{padding:7px 0;border-top:1px solid var(--border);font-size:12px}.q:first-child{border-top:0}
+ .steps{display:flex;gap:3px;margin:4px 0}.steps i{flex:1;height:5px;border-radius:3px;background:#191e42}.steps i.on{background:var(--pink)}
+ .mkr{position:relative;width:var(--s);height:var(--s);border-radius:50%;background:var(--c);border:2px solid #fff;color:#050714;font:800 11px/calc(var(--s) - 4px) system-ui,sans-serif;text-align:center;box-shadow:0 1px 8px rgba(0,0,0,.75)}
+ .mkr.sel{outline:3px solid var(--pink);outline-offset:2px}
  .mkr.crit::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--c);animation:pr 1.6s ease-out infinite}
  @keyframes pr{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
- .mkl{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 10px system-ui,sans-serif;color:#e2e8f0;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:3px;pointer-events:none}
- .mtip{background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:12px;line-height:1.5}
- .leaflet-tooltip-top.mtip::before{border-top-color:#0f172a}
- .maplegend,.mapchip{background:rgba(15,23,42,.92);color:#e2e8f0;padding:8px 10px;border-radius:8px;border:1px solid #334155;font-size:11px;line-height:1.7}
- .mapchip{font-size:12px;font-weight:700;color:#fff}
- #banner{display:none;cursor:pointer;background:#7f1d1d;color:#fecaca;padding:7px 18px;font-size:13px;font-weight:600}
- #ac{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:5000;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
- #bell.hot{background:#ef4444}
- #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#10b981;color:#06231a;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
- .sm{font-size:12px;color:#cbd5e1}
+ .mkl{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 10px system-ui,sans-serif;color:#f5f3ff;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:3px;pointer-events:none}
+ .mtip{background:#0a0d24;color:#f5f3ff;border:1px solid var(--purple);font-size:12px;line-height:1.5}
+ .leaflet-tooltip-top.mtip::before{border-top-color:#0a0d24}
+ .maplegend,.mapchip{background:rgba(10,13,36,.92);color:#f5f3ff;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:11px;line-height:1.7}
+ .mapchip{font-size:12px;font-weight:700;color:var(--pink)}
+ #mapHint{
+   position:absolute;top:56px;left:50%;transform:translateX(-50%);
+   z-index:1000;background:rgba(10,13,36,0.92);border:1px solid var(--pink);
+   color:#f5f3ff;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:600;
+   box-shadow:0 6px 20px rgba(0,0,0,0.6);pointer-events:none;transition:opacity 0.3s;
+ }
+ #banner{display:none;cursor:pointer;background:linear-gradient(90deg,#4c0519,#831843);color:#fbcfe8;padding:7px 18px;font-size:13px;font-weight:600;border-bottom:1px solid var(--pink)}
+ #ac{display:none;position:fixed;inset:0;background:rgba(5,7,20,.78);backdrop-filter:blur(6px);z-index:5000;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
+ #bell.hot{background:#ec4899;color:#fff}
+ #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pink);color:#050714;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
+ .sm{font-size:12px;color:#e9d5ff}
 </style>
 </head>
 <body>
+
+<!-- WELCOME SCREEN -->
+<div id="welcome">
+  <div class="w-card">
+    <div class="w-radar">&#128225;</div>
+    <div><span class="badge">Hack4Pashudhan &middot; Team ID: H4P-VC587GBK</span></div>
+    <h1 class="w-title">Spillover Radar</h1>
+    <p class="w-sub">
+      One Health AI Surveillance &amp; Early Outbreak Detection Platform.<br>
+      Built by <strong style="color:#f472b6">VetTech Trio</strong> (Parth Kantharia, Priyal Kantharia, Rahul Bhojkar).
+    </p>
+    <div class="w-pills">
+      <span class="w-pill">&#129440; Zoonotic Risk Scoring</span>
+      <span class="w-pill">&#127782;&#65039; Live Climate Anomaly</span>
+      <span class="w-pill">&#129302; Isolation Forest + CUSUM</span>
+      <span class="w-pill">&#128680; 48h Vet Dispatch Queue</span>
+    </div>
+    <button class="w-btn" onclick="startApp()">Get Started &rarr;</button>
+  </div>
+</div>
+
 <header>
   <div>
     <span class="badge">Team ID: H4P-VC587GBK</span>
-    <strong style="margin-left:10px;color:#38bdf8">&#128225; Spillover Radar</strong>
-    <span style="color:#94a3b8;font-size:12px;margin-left:8px">VetTech Trio</span>
+    <strong style="margin-left:10px;color:#f472b6">&#128225; Spillover Radar</strong>
+    <span style="color:#c084fc;font-size:12px;margin-left:8px">VetTech Trio</span>
   </div>
   <div class="sm"><span id="fresh"></span><span id="chips"></span>
     <button class="btn alt" id="bell" onclick="openAC()" title="Alert Center">&#128276; <b id="bellN">0</b></button>
@@ -71,21 +270,23 @@
     <button class="btn" onclick="sitrep()"><span data-i="sitrep">Situation report</span></button>
   </div>
 </header>
-<div id="scn" style="display:none;background:#78350f;color:#fde68a;padding:6px 18px;font-size:12px"></div>
+<div id="scn" style="display:none;background:#4a044e;color:#f5d0fe;padding:6px 18px;font-size:12px"></div>
 <div id="banner" onclick="openAC()"></div>
 <div id="container">
   <div id="mapwrap">
     <div id="controls">
-      <label><input type="checkbox" id="lMarkers" checked> Markers</label>
-      <label><input type="checkbox" id="lHeat" checked> Heatmap</label>
+      <span style="color:#f472b6;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Map Layers:</span>
+      <label><input type="checkbox" id="lMarkers"> Markers</label>
+      <label><input type="checkbox" id="lHeat"> Heatmap</label>
       <label><input type="checkbox" id="lBuf"> 5 km buffers</label>
-      <label><input type="checkbox" id="lCor" checked> Corridors</label>
-      <label><input type="checkbox" id="lLab" checked> Labels</label>
+      <label><input type="checkbox" id="lCor"> Corridors</label>
+      <label><input type="checkbox" id="lLab"> Labels</label>
       <span style="margin-left:auto"></span>
       <button class="btn alt" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
       <input type="range" id="week" min="0" max="7" value="7" style="width:150px">
-      <b id="weekLbl" style="min-width:42px"></b>
+      <b id="weekLbl" style="min-width:42px;color:#f472b6"></b>
     </div>
+    <div id="mapHint">&#10024; Plain map mode: Select layers above one by one (or click a district on the right) to display details</div>
     <div id="map"></div>
   </div>
   <div id="panel">
@@ -97,12 +298,12 @@
     </div>
 
     <div class="card">
-      <h3 id="dName" style="margin:0 0 4px;color:#38bdf8"></h3>
+      <h3 id="dName" style="margin:0 0 4px;color:#f472b6"></h3>
       <div id="dStatus" class="sm"></div>
       <div style="display:flex;align-items:baseline;gap:10px"><div id="dScore" style="font-size:32px;font-weight:bold;margin:6px 0 2px">--</div><div id="dWhat" class="sm"></div></div>
       <div id="dMeta" class="sm"></div><div id="dGap" class="sm" style="color:#f59e0b"></div>
       <svg id="spark" viewBox="0 0 380 96" width="100%" style="margin-top:6px"></svg>
-      <div class="note">Blue: risk &middot; dashed blue: 2-wk trend extrapolation &middot; purple dashed: human fever (scaled) &middot; red line: 70.</div>
+      <div class="note">Pink: risk &middot; dashed pink: 2-wk trend extrapolation &middot; purple dashed: human fever (scaled) &middot; red line: 70.</div>
       <div id="dTrend" class="sm" style="margin-top:4px"></div>
       <div style="margin-top:8px"><span class="sm">What-if ring vaccination: +<b id="vxv">0</b>% coverage</span>
         <input type="range" id="vx" min="0" max="40" value="0"></div>
@@ -119,7 +320,7 @@
       <div class="note">Attribution = how much more normal the district looks when that indicator is set to the median. Association, not causation.</div>
     </div>
 
-    <div class="card"><h4 style="color:#f59e0b" data-i="protocol">ACTIONABLE VETERINARY PROTOCOL</h4><p id="dAction" class="sm" style="margin:0"></p></div>
+    <div class="card"><h4 style="color:#f472b6" data-i="protocol">ACTIONABLE VETERINARY PROTOCOL</h4><p id="dAction" class="sm" style="margin:0"></p></div>
 
     <div class="card"><h4 data-i="queue">48-HOUR RESPONSE QUEUE</h4><div id="alerts"></div></div>
 
@@ -168,19 +369,33 @@
   </div>
 </div>
 <div id="ac" onclick="if(event.target===this)closeAC()">
- <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;max-width:760px;width:100%;padding:16px">
+ <div style="background:#0a0d24;border:1px solid var(--border);border-radius:12px;max-width:760px;width:100%;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-   <h3 style="margin:0">&#128680; <span data-i="ac_title">Alert Center</span></h3>
+   <h3 style="margin:0;color:#f472b6">&#128680; <span data-i="ac_title">Alert Center</span></h3>
    <div><button class="btn alt" onclick="simulate()" data-i="ac_sim">Simulate field-report surge</button>
         <button class="btn alt" onclick="askNotif()" data-i="ac_notif">Enable desktop notifications</button>
         <button class="btn alt" onclick="closeAC()">&#10005;</button></div></div>
   <div class="note" id="acHelp"></div>
   <div id="acList" style="margin-top:6px"></div>
-  <h4 style="margin:12px 0 4px;font-size:11px;color:#cbd5e1" data-i="log">ACTIVITY LOG</h4><div id="acEvents" class="sm"></div>
+  <h4 style="margin:12px 0 4px;font-size:11px;color:#f472b6" data-i="log">ACTIVITY LOG</h4><div id="acEvents" class="sm"></div>
  </div></div>
 <div id="toast"></div>
 <script>
 const $ = id => document.getElementById(id);
+
+function startApp() {
+  $('welcome').classList.add('hide');
+  setTimeout(() => {
+    $('welcome').style.display = 'none';
+    if (window.map) { map.invalidateSize(); fitAll(); }
+  }, 450);
+}
+
+function updateHint() {
+  const anyOn = ['lMarkers','lHeat','lBuf','lCor','lLab'].some(id => $(id) && $(id).checked);
+  if ($('mapHint')) $('mapHint').style.opacity = anyOn ? '0' : '1';
+}
+
 const I18N = {
  en: { crit:'CRITICAL', watch:'WATCH', normal:'NORMAL', status:'Status', refresh:'Refresh', sitrep:'Situation report', k_crit:'CRITICAL', k_watch:'WATCH', k_ad:'ANIMAL DEATHS', k_hf:'HUMAN FEVER',
   why:'WHY IS IT FLAGGED? TWO VIEWS', protocol:'ACTIONABLE VETERINARY PROTOCOL', queue:'48-HOUR RESPONSE QUEUE', report:'FIELD REPORT INTAKE (live)', expo:'CORRIDOR EXPOSURE INDEX (downstream spread risk)',
@@ -217,14 +432,14 @@ const seen = new Set(); let firstLoad = true;
 const T = k => (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k;
 const lbl = st => T(st.toLowerCase());
 function applyLang() { document.querySelectorAll('[data-i]').forEach(e => e.textContent = T(e.dataset.i)); }
-let P = {"generated_at": "2026-10-21T11:36:12+05:30", "weeks": ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"], "factorNames": ["Livestock Deaths, Abortions & PPR", "Thermal Shock & Rainfall Deficit", "Vaccination Coverage Deficit"], "weights": [0.5, 0.25, 0.25], "ref_cap": [60.0, 10.0, 10.0], "districts": [{"id": "barmer", "name": "Barmer", "state": "Rajasthan", "lat": 25.7532, "lon": 71.3967, "vet": [23.0, 27.0, 27.0, 39.5, 44.5, 51.5, 50.0, 61.0], "clim": [3.25, 3.88, 4.37, 5.38, 6.25, 6.82, 8.09, 8.65], "vax_cov": 0.32, "scores": [44.3, 49.2, 50.4, 63.4, 69.7, 77.0, 78.9, 88.6], "human": [6, 6, 7, 7, 7, 10, 13, 14], "deaths": [2, 2, 2, 3, 4, 5, 4, 5], "abortions": [3, 4, 4, 5, 6, 6, 7, 8], "ppr": [5, 6, 6, 10, 9, 11, 11, 14], "temp": [1.22, 1.43, 1.59, 1.91, 2.3, 2.31, 2.86, 3.1], "rain": [15.8, 19.6, 22.6, 29.1, 31.6, 39.9, 44.2, 46.0], "shares": [[43, 18, 38], [46, 20, 35], [45, 22, 34], [52, 21, 27], [53, 22, 24], [56, 22, 22], [53, 26, 22], [56, 24, 19]], "ml_score": [55, 37, 30, 45, 50, 58, 65, 100], "ml_shares": [56, 33, 11], "ml_anomaly": true, "cusum_week": 3, "complete": 100, "gap": false}, {"id": "jodhpur", "name": "Jodhpur", "state": "Rajasthan", "lat": 26.2389, "lon": 73.0243, "vet": [23.0, 24.5, 27.0, 27.0, 32.5, 32.5, 35.5, 38.0], "clim": [4.15, 4.43, 5.12, 5.71, 6.05, 6.05, 6.84, 6.85], "vax_cov": 0.41, "scores": [44.3, 46.2, 50.1, 51.5, 57.0, 56.9, 61.4, 63.6], "human": [7, 7, 6, 7, 8, 8, 9, 9], "deaths": [2, 2, 2, 2, 3, 2, 3, 3], "abortions": [3, 3, 4, 4, 4, 5, 4, 5], "ppr": [5, 6, 6, 6, 7, 8, 9, 9], "temp": [1.39, 1.49, 1.76, 1.97, 2.05, 2.14, 2.53, 2.4], "rain": [24.7, 26.2, 29.3, 32.5, 35.4, 32.9, 34.3, 38.0], "shares": [[43, 23, 33], [44, 24, 32], [45, 26, 29], [44, 28, 29], [48, 27, 26], [48, 27, 26], [48, 28, 24], [50, 27, 23]], "ml_score": [14, 9, 8, 9, 15, 14, 19, 22], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 100, "gap": false}, {"id": "bikaner", "name": "Bikaner", "state": "Rajasthan", "lat": 28.0229, "lon": 73.3119, "vet": [27.0, 26.0, 32.5, 35.5, 35.5, 39.5, 43.5, 47.5], "clim": [4.27, 4.31, 4.95, 5.67, 6.82, 6.96, 7.65, 7.53], "vax_cov": 0.38, "scores": [48.7, 47.9, 54.9, 59.3, 62.1, 65.8, 70.9, 73.9], "human": [8, 8, 7, 7, 9, 9, 10, 11], "deaths": [2, 2, 3, 3, 3, 3, 3, 4], "abortions": [4, 3, 4, 4, 4, 5, 6, 6], "ppr": [6, 7, 7, 9, 9, 10, 11, 11], "temp": [1.55, 1.46, 1.77, 2.03, 2.61, 2.49, 2.97, 2.7], "rain": [22.2, 25.2, 26.4, 30.3, 31.8, 37.1, 34.5, 40.0], "shares": [[46, 22, 32], [45, 22, 32], [49, 23, 28], [50, 24, 26], [48, 27, 25], [50, 26, 24], [51, 27, 22], [54, 25, 21]], "ml_score": [15, 15, 27, 25, 21, 28, 44, 49], "ml_shares": [0, 0, 0], "ml_anomaly": true, "cusum_week": 4, "complete": 100, "gap": false}, {"id": "jaisalmer", "name": "Jaisalmer", "state": "Rajasthan", "lat": 26.9157, "lon": 70.9083, "vet": [15.0, 21.5, 25.5, 24.5, 27.0, 31.0, 38.0, 36.5], "clim": [3.91, 4.68, 5.43, 5.95, 7.11, 7.24, 7.31, 8.15], "vax_cov": 0.44, "scores": [36.3, 43.6, 48.8, 49.3, 54.3, 57.9, 63.9, 64.8], "human": [4, 4, 3, 6, 6, 7, 7, 8], "deaths": [1, 2, 2, 2, 2, 2, 3, 3], "abortions": [2, 3, 4, 3, 4, 5, 5, 5], "ppr": [4, 4, 5, 6, 6, 7, 9, 8], "temp": [1.33, 1.76, 1.9, 2.11, 2.62, 2.72, 2.64, 2.9], "rain": [22.8, 22.7, 30.1, 32.3, 35.9, 35.2, 38.4, 44.0], "shares": [[34, 27, 39], [41, 27, 32], [44, 28, 29], [41, 30, 28], [41, 33, 26], [45, 31, 24], [50, 29, 22], [47, 31, 22]], "ml_score": [27, 16, 11, 16, 32, 32, 35, 53], "ml_shares": [0, 100, 0], "ml_anomaly": true, "cusum_week": 6, "complete": 100, "gap": false}, {"id": "jaipur", "name": "Jaipur", "state": "Rajasthan", "lat": 26.9124, "lon": 75.7873, "vet": [13.5, 13.5, 17.5, 17.5, 17.5, 16.0, 17.5, 17.5], "clim": [3.62, 3.33, 3.62, 3.62, 3.77, 3.96, 4.59, 4.35], "vax_cov": 0.63, "scores": [29.6, 28.8, 32.9, 32.9, 33.3, 32.5, 35.3, 34.7], "human": [5, 4, 3, 4, 5, 5, 5, 4], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 3, 3, 3, 3, 3, 3], "ppr": [3, 3, 4, 4, 4, 3, 4, 4], "temp": [1.36, 1.23, 1.36, 1.28, 1.33, 1.4, 1.7, 1.6], "rain": [17.6, 16.7, 17.6, 19.8, 20.7, 21.6, 23.0, 22.0], "shares": [[38, 31, 31], [39, 29, 32], [44, 28, 28], [44, 28, 28], [44, 28, 28], [41, 30, 28], [41, 33, 26], [42, 31, 27]], "ml_score": [12, 14, 0, 0, 0, 10, 11, 6], "ml_shares": [0, 75, 25], "ml_anomaly": false, "cusum_week": 7, "complete": 100, "gap": false}, {"id": "kutch", "name": "Kutch", "state": "Gujarat", "lat": 23.242, "lon": 69.6669, "vet": [17.5, 15.0, 20.5, 24.5, 27.0, 27.0, 28.5, 28.5], "clim": [3.82, 4.24, 4.37, 4.33, 5.39, 5.99, 5.2, 6.03], "vax_cov": 0.52, "scores": [36.1, 35.1, 40.0, 43.2, 48.0, 49.5, 48.7, 50.8], "human": [6, 5, 5, 4, 5, 6, 8, 7], "deaths": [1, 1, 1, 2, 2, 2, 2, 2], "abortions": [3, 2, 3, 3, 4, 4, 4, 4], "ppr": [4, 4, 6, 6, 6, 6, 7, 7], "temp": [1.37, 1.48, 1.55, 1.47, 1.95, 2.26, 1.84, 2.2], "rain": [20.3, 23.6, 23.7, 25.2, 28.2, 28.8, 28.3, 31.0], "shares": [[40, 26, 33], [36, 30, 34], [43, 27, 30], [47, 25, 28], [47, 28, 25], [45, 30, 24], [49, 27, 25], [47, 30, 24]], "ml_score": [12, 16, 9, 12, 17, 21, 21, 25], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true}, {"id": "ahmednagar", "name": "Ahmednagar", "state": "Maharashtra", "lat": 19.0948, "lon": 74.748, "vet": [18.5, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0], "clim": [2.88, 2.95, 3.24, 3.34, 3.1, 3.42, 3.77, 3.72], "vax_cov": 0.66, "scores": [31.1, 32.5, 33.3, 33.5, 32.9, 33.7, 34.6, 34.5], "human": [5, 5, 5, 6, 6, 6, 6, 5], "deaths": [2, 2, 2, 2, 2, 2, 2, 2], "abortions": [3, 3, 3, 3, 3, 3, 3, 3], "ppr": [2, 3, 3, 3, 3, 3, 3, 3], "temp": [1.18, 1.08, 1.25, 1.24, 1.11, 1.29, 1.4, 1.4], "rain": [11.3, 15.1, 14.8, 16.6, 16.6, 16.4, 18.8, 18.0], "shares": [[50, 23, 27], [51, 23, 26], [50, 24, 26], [50, 25, 25], [51, 24, 26], [49, 25, 25], [48, 27, 25], [48, 27, 25]], "ml_score": [28, 16, 7, 5, 9, 6, 10, 8], "ml_shares": [0, 0, 100], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "pune", "name": "Pune", "state": "Maharashtra", "lat": 18.5204, "lon": 73.8567, "vet": [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0], "clim": [2.79, 2.82, 2.87, 2.79, 2.91, 2.94, 2.67, 2.78], "vax_cov": 0.74, "scores": [21.0, 21.0, 21.2, 21.0, 21.3, 21.3, 20.7, 21.0], "human": [3, 3, 3, 2, 3, 2, 3, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [0, 0, 0, 0, 0, 0, 0, 0], "temp": [1.1, 1.08, 1.16, 1.03, 1.15, 1.19, 1.03, 1.1], "rain": [12.1, 13.1, 11.7, 14.0, 12.6, 11.9, 12.2, 12.0], "shares": [[36, 33, 31], [36, 33, 31], [35, 34, 31], [36, 33, 31], [35, 34, 31], [35, 34, 30], [36, 32, 31], [36, 33, 31]], "ml_score": [8, 13, 14, 8, 15, 21, 35, 12], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "latur", "name": "Latur", "state": "Maharashtra", "lat": 18.4088, "lon": 76.5604, "vet": [13.5, 15.0, 15.0, 19.0, 17.5, 19.0, 17.5, 17.5], "clim": [3.39, 3.88, 3.96, 4.2, 4.73, 4.95, 4.55, 4.97], "vax_cov": 0.58, "scores": [30.2, 32.7, 32.9, 36.8, 36.9, 38.7, 36.5, 37.5], "human": [4, 3, 5, 4, 5, 5, 5, 6], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 3, 3, 3, 3, 3], "ppr": [3, 4, 4, 5, 4, 5, 4, 4], "temp": [1.2, 1.4, 1.38, 1.49, 1.67, 1.7, 1.66, 1.8], "rain": [18.4, 20.4, 22.2, 22.7, 25.9, 28.4, 23.5, 26.0], "shares": [[37, 28, 35], [38, 30, 32], [38, 30, 32], [43, 28, 29], [40, 32, 28], [41, 32, 27], [40, 31, 29], [39, 33, 28]], "ml_score": [19, 5, 6, 6, 6, 17, 3, 13], "ml_shares": [0, 100, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true}, {"id": "bhopal", "name": "Bhopal", "state": "Madhya Pradesh", "lat": 23.2599, "lon": 77.4126, "vet": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "clim": [2.83, 2.78, 2.99, 3.07, 3.04, 3.53, 2.96, 3.09], "vax_cov": 0.71, "scores": [24.3, 24.2, 24.7, 24.9, 24.8, 26.1, 24.6, 25.0], "human": [3, 3, 3, 4, 4, 3, 4, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [2, 2, 2, 2, 2, 2, 2, 2], "temp": [1.06, 0.99, 1.16, 1.18, 1.21, 1.38, 1.1, 1.2], "rain": [13.8, 14.9, 13.6, 14.2, 12.9, 15.7, 14.7, 14.0], "shares": [[41, 29, 30], [41, 29, 30], [40, 30, 29], [40, 31, 29], [40, 31, 29], [38, 34, 28], [41, 30, 29], [40, 31, 29]], "ml_score": [13, 18, 4, 4, 4, 28, 6, 6], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "wayanad", "name": "Wayanad", "state": "Kerala", "lat": 11.6854, "lon": 76.132, "vet": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "clim": [0.58, 0.54, 0.58, 0.58, 0.5, 0.56, 0.52, 0.54], "vax_cov": 0.89, "scores": [7.5, 7.4, 7.5, 7.5, 7.3, 7.5, 7.4, 7.4], "human": [1, 1, 1, 1, 0, 1, 0, 0], "deaths": [0, 0, 0, 0, 0, 0, 0, 0], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.32, 0.3, 0.32, 0.32, 0.28, 0.31, 0.29, 0.3], "rain": [-4.5, -4.1, -4.1, -3.7, -3.8, -4.0, -3.9, -4.0], "shares": [[44, 19, 37], [45, 18, 37], [44, 19, 37], [44, 19, 37], [45, 17, 37], [45, 19, 37], [45, 18, 37], [45, 18, 37]], "ml_score": [48, 40, 48, 48, 71, 54, 58, 40], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "kozhikode", "name": "Kozhikode", "state": "Kerala", "lat": 11.2588, "lon": 75.7804, "vet": [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0], "clim": [1.14, 0.95, 1.21, 1.18, 1.15, 0.99, 1.01, 1.03], "vax_cov": 0.86, "scores": [13.0, 12.5, 13.2, 13.1, 13.0, 12.6, 12.7, 12.8], "human": [4, 2, 2, 2, 1, 2, 2, 3], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.55, 0.45, 0.59, 0.58, 0.55, 0.48, 0.49, 0.5], "rain": [2.2, 2.1, 2.2, 2.1, 2.4, 1.9, 1.9, 2.0], "shares": [[51, 22, 27], [53, 19, 28], [51, 23, 27], [51, 23, 27], [51, 22, 27], [53, 20, 28], [53, 20, 28], [52, 20, 27]], "ml_score": [36, 53, 48, 40, 34, 37, 33, 38], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}], "steps": ["Flagged", "Verified", "Team dispatched", "Samples sent", "Closed"], "alerts": [{"district": "Barmer", "id": "barmer", "opened": "2026-10-21T11:36:12+05:30", "step": 0}, {"district": "Bikaner", "id": "bikaner", "opened": "2026-10-21T11:36:12+05:30", "step": 0}], "events": [{"ts": "2026-10-21T11:36:12+05:30", "text": "ALERT opened: Bikaner reached 73.9"}, {"ts": "2026-10-21T11:36:12+05:30", "text": "ALERT opened: Barmer reached 88.6"}], "sources": [{"sector": "Animal health", "mode": "simulated", "detail": "synthetic demo series", "feed": "NADRES / state AH dept"}, {"sector": "Human health", "mode": "simulated", "detail": "synthetic demo series", "feed": "IDSP / IHIP"}, {"sector": "Climate", "mode": "simulated", "detail": "last refresh n/a", "feed": "IMD / Open-Meteo"}], "live": false, "corridors": [{"from": "barmer", "to": "jodhpur", "name": "Marwar cattle route", "vol": 0.9}, {"from": "barmer", "to": "jaisalmer", "name": "Thar border route", "vol": 0.5}, {"from": "barmer", "to": "kutch", "name": "Kutch\u2013Barmer trade route", "vol": 0.6}, {"from": "jodhpur", "to": "bikaner", "name": "Western Rajasthan fair route", "vol": 0.6}, {"from": "jodhpur", "to": "jaipur", "name": "Jaipur mandi route", "vol": 0.9}, {"from": "jaipur", "to": "bhopal", "name": "Central India transit", "vol": 0.7}, {"from": "pune", "to": "ahmednagar", "name": "Deccan route", "vol": 0.8}, {"from": "ahmednagar", "to": "latur", "name": "Marathwada route", "vol": 0.6}, {"from": "bhopal", "to": "ahmednagar", "name": "Satpura transit", "vol": 0.5}, {"from": "kozhikode", "to": "wayanad", "name": "Malabar hill route", "vol": 0.4}], "lag": {"stats": [{"lag": 0, "r": 0.658}, {"lag": 1, "r": 0.692}, {"lag": 2, "r": 0.865}, {"lag": 3, "r": 0.759}, {"lag": 4, "r": 0.652}], "best": 2, "assumed": 2}, "lead": {"rows": [{"name": "Barmer", "radar": 0, "cusum": 3, "human": 6}, {"name": "Jodhpur", "radar": 0, "cusum": 4, "human": 7}, {"name": "Bikaner", "radar": 0, "cusum": 4, "human": 7}, {"name": "Jaisalmer", "radar": 1, "cusum": 6, "human": 5}, {"name": "Jaipur", "radar": null, "cusum": 7, "human": null}, {"name": "Kutch", "radar": 2, "cusum": 4, "human": null}, {"name": "Ahmednagar", "radar": null, "cusum": null, "human": null}, {"name": "Pune", "radar": null, "cusum": null, "human": null}, {"name": "Latur", "radar": null, "cusum": 4, "human": null}, {"name": "Bhopal", "radar": null, "cusum": null, "human": null}, {"name": "Wayanad", "radar": null, "cusum": null, "human": null}, {"name": "Kozhikode", "radar": null, "cusum": null, "human": null}], "radar_median": 6.5, "cusum_median": 3.0, "n": 4, "human_threshold": "CUSUM"}, "webhook": false, "scenario": null}, D, byId, W = P.weights.slice(), REF = P.ref_cap, LAST, wk, selected = null, playing = null, vaxPlus = 0, inited = false;
+let P = {"generated_at": "2026-10-25T13:51:46+05:30", "weeks": ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"], "factorNames": ["Livestock Deaths, Abortions & PPR", "Thermal Shock & Rainfall Deficit", "Vaccination Coverage Deficit"], "weights": [0.5, 0.25, 0.25], "ref_cap": [60.0, 10.0, 10.0], "districts": [{"id": "barmer", "name": "Barmer", "state": "Rajasthan", "lat": 25.7532, "lon": 71.3967, "vet": [23.0, 27.0, 27.0, 39.5, 44.5, 51.5, 50.0, 61.0], "clim": [3.25, 3.88, 4.37, 5.38, 6.25, 6.82, 8.09, 8.65], "vax_cov": 0.32, "scores": [44.3, 49.2, 50.4, 63.4, 69.7, 77.0, 78.9, 88.6], "human": [6, 6, 7, 7, 7, 10, 13, 14], "deaths": [2, 2, 2, 3, 4, 5, 4, 5], "abortions": [3, 4, 4, 5, 6, 6, 7, 8], "ppr": [5, 6, 6, 10, 9, 11, 11, 14], "temp": [1.22, 1.43, 1.59, 1.91, 2.3, 2.31, 2.86, 3.1], "rain": [15.8, 19.6, 22.6, 29.1, 31.6, 39.9, 44.2, 46.0], "shares": [[43, 18, 38], [46, 20, 35], [45, 22, 34], [52, 21, 27], [53, 22, 24], [56, 22, 22], [53, 26, 22], [56, 24, 19]], "ml_score": [55, 37, 30, 45, 50, 58, 65, 100], "ml_shares": [56, 33, 11], "ml_anomaly": true, "cusum_week": 3, "complete": 100, "gap": false}, {"id": "jodhpur", "name": "Jodhpur", "state": "Rajasthan", "lat": 26.2389, "lon": 73.0243, "vet": [23.0, 24.5, 27.0, 27.0, 32.5, 32.5, 35.5, 38.0], "clim": [4.15, 4.43, 5.12, 5.71, 6.05, 6.05, 6.84, 6.85], "vax_cov": 0.41, "scores": [44.3, 46.2, 50.1, 51.5, 57.0, 56.9, 61.4, 63.6], "human": [7, 7, 6, 7, 8, 8, 9, 9], "deaths": [2, 2, 2, 2, 3, 2, 3, 3], "abortions": [3, 3, 4, 4, 4, 5, 4, 5], "ppr": [5, 6, 6, 6, 7, 8, 9, 9], "temp": [1.39, 1.49, 1.76, 1.97, 2.05, 2.14, 2.53, 2.4], "rain": [24.7, 26.2, 29.3, 32.5, 35.4, 32.9, 34.3, 38.0], "shares": [[43, 23, 33], [44, 24, 32], [45, 26, 29], [44, 28, 29], [48, 27, 26], [48, 27, 26], [48, 28, 24], [50, 27, 23]], "ml_score": [14, 9, 8, 9, 15, 14, 19, 22], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 100, "gap": false}, {"id": "bikaner", "name": "Bikaner", "state": "Rajasthan", "lat": 28.0229, "lon": 73.3119, "vet": [27.0, 26.0, 32.5, 35.5, 35.5, 39.5, 43.5, 47.5], "clim": [4.27, 4.31, 4.95, 5.67, 6.82, 6.96, 7.65, 7.53], "vax_cov": 0.38, "scores": [48.7, 47.9, 54.9, 59.3, 62.1, 65.8, 70.9, 73.9], "human": [8, 8, 7, 7, 9, 9, 10, 11], "deaths": [2, 2, 3, 3, 3, 3, 3, 4], "abortions": [4, 3, 4, 4, 4, 5, 6, 6], "ppr": [6, 7, 7, 9, 9, 10, 11, 11], "temp": [1.55, 1.46, 1.77, 2.03, 2.61, 2.49, 2.97, 2.7], "rain": [22.2, 25.2, 26.4, 30.3, 31.8, 37.1, 34.5, 40.0], "shares": [[46, 22, 32], [45, 22, 32], [49, 23, 28], [50, 24, 26], [48, 27, 25], [50, 26, 24], [51, 27, 22], [54, 25, 21]], "ml_score": [15, 15, 27, 25, 21, 28, 44, 49], "ml_shares": [0, 0, 0], "ml_anomaly": true, "cusum_week": 4, "complete": 100, "gap": false}, {"id": "jaisalmer", "name": "Jaisalmer", "state": "Rajasthan", "lat": 26.9157, "lon": 70.9083, "vet": [15.0, 21.5, 25.5, 24.5, 27.0, 31.0, 38.0, 36.5], "clim": [3.91, 4.68, 5.43, 5.95, 7.11, 7.24, 7.31, 8.15], "vax_cov": 0.44, "scores": [36.3, 43.6, 48.8, 49.3, 54.3, 57.9, 63.9, 64.8], "human": [4, 4, 3, 6, 6, 7, 7, 8], "deaths": [1, 2, 2, 2, 2, 2, 3, 3], "abortions": [2, 3, 4, 3, 4, 5, 5, 5], "ppr": [4, 4, 5, 6, 6, 7, 9, 8], "temp": [1.33, 1.76, 1.9, 2.11, 2.62, 2.72, 2.64, 2.9], "rain": [22.8, 22.7, 30.1, 32.3, 35.9, 35.2, 38.4, 44.0], "shares": [[34, 27, 39], [41, 27, 32], [44, 28, 29], [41, 30, 28], [41, 33, 26], [45, 31, 24], [50, 29, 22], [47, 31, 22]], "ml_score": [27, 16, 11, 16, 32, 32, 35, 53], "ml_shares": [0, 100, 0], "ml_anomaly": true, "cusum_week": 6, "complete": 100, "gap": false}, {"id": "jaipur", "name": "Jaipur", "state": "Rajasthan", "lat": 26.9124, "lon": 75.7873, "vet": [13.5, 13.5, 17.5, 17.5, 17.5, 16.0, 17.5, 17.5], "clim": [3.62, 3.33, 3.62, 3.62, 3.77, 3.96, 4.59, 4.35], "vax_cov": 0.63, "scores": [29.6, 28.8, 32.9, 32.9, 33.3, 32.5, 35.3, 34.7], "human": [5, 4, 3, 4, 5, 5, 5, 4], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 3, 3, 3, 3, 3, 3], "ppr": [3, 3, 4, 4, 4, 3, 4, 4], "temp": [1.36, 1.23, 1.36, 1.28, 1.33, 1.4, 1.7, 1.6], "rain": [17.6, 16.7, 17.6, 19.8, 20.7, 21.6, 23.0, 22.0], "shares": [[38, 31, 31], [39, 29, 32], [44, 28, 28], [44, 28, 28], [44, 28, 28], [41, 30, 28], [41, 33, 26], [42, 31, 27]], "ml_score": [12, 14, 0, 0, 0, 10, 11, 6], "ml_shares": [0, 75, 25], "ml_anomaly": false, "cusum_week": 7, "complete": 100, "gap": false}, {"id": "kutch", "name": "Kutch", "state": "Gujarat", "lat": 23.242, "lon": 69.6669, "vet": [17.5, 15.0, 20.5, 24.5, 27.0, 27.0, 28.5, 28.5], "clim": [3.82, 4.24, 4.37, 4.33, 5.39, 5.99, 5.2, 6.03], "vax_cov": 0.52, "scores": [36.1, 35.1, 40.0, 43.2, 48.0, 49.5, 48.7, 50.8], "human": [6, 5, 5, 4, 5, 6, 8, 7], "deaths": [1, 1, 1, 2, 2, 2, 2, 2], "abortions": [3, 2, 3, 3, 4, 4, 4, 4], "ppr": [4, 4, 6, 6, 6, 6, 7, 7], "temp": [1.37, 1.48, 1.55, 1.47, 1.95, 2.26, 1.84, 2.2], "rain": [20.3, 23.6, 23.7, 25.2, 28.2, 28.8, 28.3, 31.0], "shares": [[40, 26, 33], [36, 30, 34], [43, 27, 30], [47, 25, 28], [47, 28, 25], [45, 30, 24], [49, 27, 25], [47, 30, 24]], "ml_score": [12, 16, 9, 12, 17, 21, 21, 25], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true}, {"id": "ahmednagar", "name": "Ahmednagar", "state": "Maharashtra", "lat": 19.0948, "lon": 74.748, "vet": [18.5, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0], "clim": [2.88, 2.95, 3.24, 3.34, 3.1, 3.42, 3.77, 3.72], "vax_cov": 0.66, "scores": [31.1, 32.5, 33.3, 33.5, 32.9, 33.7, 34.6, 34.5], "human": [5, 5, 5, 6, 6, 6, 6, 5], "deaths": [2, 2, 2, 2, 2, 2, 2, 2], "abortions": [3, 3, 3, 3, 3, 3, 3, 3], "ppr": [2, 3, 3, 3, 3, 3, 3, 3], "temp": [1.18, 1.08, 1.25, 1.24, 1.11, 1.29, 1.4, 1.4], "rain": [11.3, 15.1, 14.8, 16.6, 16.6, 16.4, 18.8, 18.0], "shares": [[50, 23, 27], [51, 23, 26], [50, 24, 26], [50, 25, 25], [51, 24, 26], [49, 25, 25], [48, 27, 25], [48, 27, 25]], "ml_score": [28, 16, 7, 5, 9, 6, 10, 8], "ml_shares": [0, 0, 100], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "pune", "name": "Pune", "state": "Maharashtra", "lat": 18.5204, "lon": 73.8567, "vet": [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0], "clim": [2.79, 2.82, 2.87, 2.79, 2.91, 2.94, 2.67, 2.78], "vax_cov": 0.74, "scores": [21.0, 21.0, 21.2, 21.0, 21.3, 21.3, 20.7, 21.0], "human": [3, 3, 3, 2, 3, 2, 3, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [0, 0, 0, 0, 0, 0, 0, 0], "temp": [1.1, 1.08, 1.16, 1.03, 1.15, 1.19, 1.03, 1.1], "rain": [12.1, 13.1, 11.7, 14.0, 12.6, 11.9, 12.2, 12.0], "shares": [[36, 33, 31], [36, 33, 31], [35, 34, 31], [36, 33, 31], [35, 34, 31], [35, 34, 30], [36, 32, 31], [36, 33, 31]], "ml_score": [8, 13, 14, 8, 15, 21, 35, 12], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "latur", "name": "Latur", "state": "Maharashtra", "lat": 18.4088, "lon": 76.5604, "vet": [13.5, 15.0, 15.0, 19.0, 17.5, 19.0, 17.5, 17.5], "clim": [3.39, 3.88, 3.96, 4.2, 4.73, 4.95, 4.55, 4.97], "vax_cov": 0.58, "scores": [30.2, 32.7, 32.9, 36.8, 36.9, 38.7, 36.5, 37.5], "human": [4, 3, 5, 4, 5, 5, 5, 6], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 3, 3, 3, 3, 3], "ppr": [3, 4, 4, 5, 4, 5, 4, 4], "temp": [1.2, 1.4, 1.38, 1.49, 1.67, 1.7, 1.66, 1.8], "rain": [18.4, 20.4, 22.2, 22.7, 25.9, 28.4, 23.5, 26.0], "shares": [[37, 28, 35], [38, 30, 32], [38, 30, 32], [43, 28, 29], [40, 32, 28], [41, 32, 27], [40, 31, 29], [39, 33, 28]], "ml_score": [19, 5, 6, 6, 6, 17, 3, 13], "ml_shares": [0, 100, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true}, {"id": "bhopal", "name": "Bhopal", "state": "Madhya Pradesh", "lat": 23.2599, "lon": 77.4126, "vet": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "clim": [2.83, 2.78, 2.99, 3.07, 3.04, 3.53, 2.96, 3.09], "vax_cov": 0.71, "scores": [24.3, 24.2, 24.7, 24.9, 24.8, 26.1, 24.6, 25.0], "human": [3, 3, 3, 4, 4, 3, 4, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [2, 2, 2, 2, 2, 2, 2, 2], "temp": [1.06, 0.99, 1.16, 1.18, 1.21, 1.38, 1.1, 1.2], "rain": [13.8, 14.9, 13.6, 14.2, 12.9, 15.7, 14.7, 14.0], "shares": [[41, 29, 30], [41, 29, 30], [40, 30, 29], [40, 31, 29], [40, 31, 29], [38, 34, 28], [41, 30, 29], [40, 31, 29]], "ml_score": [13, 18, 4, 4, 4, 28, 6, 6], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "wayanad", "name": "Wayanad", "state": "Kerala", "lat": 11.6854, "lon": 76.132, "vet": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "clim": [0.58, 0.54, 0.58, 0.58, 0.5, 0.56, 0.52, 0.54], "vax_cov": 0.89, "scores": [7.5, 7.4, 7.5, 7.5, 7.3, 7.5, 7.4, 7.4], "human": [1, 1, 1, 1, 0, 1, 0, 0], "deaths": [0, 0, 0, 0, 0, 0, 0, 0], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.32, 0.3, 0.32, 0.32, 0.28, 0.31, 0.29, 0.3], "rain": [-4.5, -4.1, -4.1, -3.7, -3.8, -4.0, -3.9, -4.0], "shares": [[44, 19, 37], [45, 18, 37], [44, 19, 37], [44, 19, 37], [45, 17, 37], [45, 19, 37], [45, 18, 37], [45, 18, 37]], "ml_score": [48, 40, 48, 48, 71, 54, 58, 40], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}, {"id": "kozhikode", "name": "Kozhikode", "state": "Kerala", "lat": 11.2588, "lon": 75.7804, "vet": [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0], "clim": [1.14, 0.95, 1.21, 1.18, 1.15, 0.99, 1.01, 1.03], "vax_cov": 0.86, "scores": [13.0, 12.5, 13.2, 13.1, 13.0, 12.6, 12.7, 12.8], "human": [4, 2, 2, 2, 1, 2, 2, 3], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.55, 0.45, 0.59, 0.58, 0.55, 0.48, 0.49, 0.5], "rain": [2.2, 2.1, 2.2, 2.1, 2.4, 1.9, 1.9, 2.0], "shares": [[51, 22, 27], [53, 19, 28], [51, 23, 27], [51, 23, 27], [51, 22, 27], [53, 20, 28], [53, 20, 28], [52, 20, 27]], "ml_score": [36, 53, 48, 40, 34, 37, 33, 38], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false}], "steps": ["Flagged", "Verified", "Team dispatched", "Samples sent", "Closed"], "alerts": [{"district": "Barmer", "id": "barmer", "opened": "2026-10-25T13:51:46+05:30", "step": 0}, {"district": "Bikaner", "id": "bikaner", "opened": "2026-10-25T13:51:46+05:30", "step": 0}], "events": [{"ts": "2026-10-25T13:51:46+05:30", "text": "ALERT opened: Bikaner reached 73.9"}, {"ts": "2026-10-25T13:51:46+05:30", "text": "ALERT opened: Barmer reached 88.6"}], "sources": [{"sector": "Animal health", "mode": "simulated", "detail": "synthetic demo series", "feed": "NADRES / state AH dept"}, {"sector": "Human health", "mode": "simulated", "detail": "synthetic demo series", "feed": "IDSP / IHIP"}, {"sector": "Climate", "mode": "simulated", "detail": "last refresh n/a", "feed": "IMD / Open-Meteo"}], "live": false, "corridors": [{"from": "barmer", "to": "jodhpur", "name": "Marwar cattle route", "vol": 0.9}, {"from": "barmer", "to": "jaisalmer", "name": "Thar border route", "vol": 0.5}, {"from": "barmer", "to": "kutch", "name": "Kutch\u2013Barmer trade route", "vol": 0.6}, {"from": "jodhpur", "to": "bikaner", "name": "Western Rajasthan fair route", "vol": 0.6}, {"from": "jodhpur", "to": "jaipur", "name": "Jaipur mandi route", "vol": 0.9}, {"from": "jaipur", "to": "bhopal", "name": "Central India transit", "vol": 0.7}, {"from": "pune", "to": "ahmednagar", "name": "Deccan route", "vol": 0.8}, {"from": "ahmednagar", "to": "latur", "name": "Marathwada route", "vol": 0.6}, {"from": "bhopal", "to": "ahmednagar", "name": "Satpura transit", "vol": 0.5}, {"from": "kozhikode", "to": "wayanad", "name": "Malabar hill route", "vol": 0.4}], "lag": {"stats": [{"lag": 0, "r": 0.658}, {"lag": 1, "r": 0.692}, {"lag": 2, "r": 0.865}, {"lag": 3, "r": 0.759}, {"lag": 4, "r": 0.652}], "best": 2, "assumed": 2}, "lead": {"rows": [{"name": "Barmer", "radar": 0, "cusum": 3, "human": 6}, {"name": "Jodhpur", "radar": 0, "cusum": 4, "human": 7}, {"name": "Bikaner", "radar": 0, "cusum": 4, "human": 7}, {"name": "Jaisalmer", "radar": 1, "cusum": 6, "human": 5}, {"name": "Jaipur", "radar": null, "cusum": 7, "human": null}, {"name": "Kutch", "radar": 2, "cusum": 4, "human": null}, {"name": "Ahmednagar", "radar": null, "cusum": null, "human": null}, {"name": "Pune", "radar": null, "cusum": null, "human": null}, {"name": "Latur", "radar": null, "cusum": 4, "human": null}, {"name": "Bhopal", "radar": null, "cusum": null, "human": null}, {"name": "Wayanad", "radar": null, "cusum": null, "human": null}, {"name": "Kozhikode", "radar": null, "cusum": null, "human": null}], "radar_median": 6.5, "cusum_median": 3.0, "n": 4, "human_threshold": "CUSUM"}, "webhook": false, "scenario": null}, D, byId, W = P.weights.slice(), REF = P.ref_cap, LAST, wk, selected = null, playing = null, vaxPlus = 0, inited = false;
 const markers = {}, buffers = {}, corridors = []; let heat = null;
 const grp = {};
 const colorFor = s => s >= 70 ? '#ef4444' : s >= 40 ? '#f59e0b' : '#10b981';
 const statusFor = s => s >= 70 ? 'CRITICAL' : s >= 40 ? 'WATCH' : 'NORMAL';
 const actionFor = st => T('act_' + st.toLowerCase());
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(m, bad) { const t = $('toast'); t.textContent = m; t.style.background = bad ? '#ef4444' : '#10b981'; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3200); }
+function toast(m, bad) { const t = $('toast'); t.textContent = m; t.style.background = bad ? '#ef4444' : '#f472b6'; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3200); }
 
 const score = (d, w, vc) => {
   const v = Math.min(1, d.vet[w] / REF[0]), c = Math.min(1, d.clim[w] / REF[1]),
@@ -255,10 +470,11 @@ function initMap() {
   let tErr = 0;
   dark.on('tileerror', () => { if (++tErr === 4 && map.hasLayer(dark)) { map.removeLayer(dark); street.addTo(map); toast('Dark basemap unavailable - switched to OpenStreetMap', true); } });
   L.control.layers({ 'Dark (Esri)': dark, 'Street (OSM)': street }, null, { position: 'topright' }).addTo(map);
-  grp.markers = L.layerGroup().addTo(map); grp.buf = L.layerGroup(); grp.cor = L.layerGroup().addTo(map);
+  // Start with plain map: layerGroups are created but NOT added to map until user checks them
+  grp.markers = L.layerGroup(); grp.buf = L.layerGroup(); grp.cor = L.layerGroup();
   L.control.scale({ metric: true, imperial: false, position: 'bottomright' }).addTo(map);
   const lg = L.control({ position: 'bottomleft' });
-  lg.onAdd = () => { const el = L.DomUtil.create('div', 'maplegend'); el.innerHTML = '<b>Risk</b><br><i class="dot" style="background:#ef4444"></i>Critical \u226570 (pulsing = open alert)<br><i class="dot" style="background:#f59e0b"></i>Watch 40\u201369<br><i class="dot" style="background:#10b981"></i>Normal &lt;40<br><span style="color:#94a3b8">Number = risk score \u00B7 size = score<br>Line width = livestock volume</span>'; return el; };
+  lg.onAdd = () => { const el = L.DomUtil.create('div', 'maplegend'); el.innerHTML = '<b>Risk</b><br><i class="dot" style="background:#ef4444"></i>Critical \u226570 (pulsing = open alert)<br><i class="dot" style="background:#f59e0b"></i>Watch 40\u201369<br><i class="dot" style="background:#10b981"></i>Normal &lt;40<br><span style="color:#a5b4fc">Number = risk score \u00B7 size = score<br>Line width = livestock volume</span>'; return el; };
   lg.addTo(map);
   const hc = L.control({ position: 'topleft' });
   hc.onAdd = () => { const el = L.DomUtil.create('div', 'leaflet-bar'); el.innerHTML = '<a href="#" title="Fit all districts" id="fitAll">\u25A3</a><a href="#" title="Zoom to critical districts" id="fitCrit">\u26A0</a>'; L.DomEvent.disableClickPropagation(el); return el; };
@@ -276,11 +492,14 @@ function initMap() {
     const line = L.polyline(curve(a, b), { weight: 1.5 + c.vol * 3, dashArray: '8 6', className: 'flow', opacity: .85 }).addTo(grp.cor);
     corridors.push({ c, line }); });
   $('rDist').innerHTML = D.map(d => '<option value="' + esc(d.name) + '">' + esc(d.name) + ', ' + esc(d.state) + '</option>').join('');
-  const tg = (id, key) => $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); });
-  tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor'); $('lLab').addEventListener('change', render);
-  $('lHeat').addEventListener('change', e => { if (!heat) return; e.target.checked ? heat.addTo(map) : map.removeLayer(heat); });
-  // optional: put the official India boundary (e.g. Survey of India GeoJSON) at data/india_boundary.geojson
-  fetch('data/india_boundary.geojson').then(r => r.ok ? r.json() : null).then(g => { if (g) L.geoJSON(g, { style: { color: '#38bdf8', weight: 1.5, fill: false }, interactive: false }).addTo(map); }).catch(() => {});
+  const tg = (id, key) => $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); updateHint(); });
+  tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor');
+  $('lLab').addEventListener('change', e => {
+    if (e.target.checked && !$('lMarkers').checked) { $('lMarkers').checked = true; grp.markers.addTo(map); }
+    updateHint(); render();
+  });
+  $('lHeat').addEventListener('change', e => { updateHint(); if (!heat) return; e.target.checked ? heat.addTo(map) : map.removeLayer(heat); });
+  fetch('data/india_boundary.geojson').then(r => r.ok ? r.json() : null).then(g => { if (g) L.geoJSON(g, { style: { color: '#c084fc', weight: 1.5, fill: false }, interactive: false }).addTo(map); }).catch(() => {});
   setTimeout(() => { map.invalidateSize(); fitAll(); }, 250);
 }
 
@@ -308,7 +527,7 @@ function render() {
   if ($('mapchip')) $('mapchip').innerHTML = '\u{1F6A8} ' + crit + ' ' + lbl('crit').toLowerCase() + ' \u00B7 ' + watch + ' ' + lbl('watch').toLowerCase() + ' \u00B7 ' + P.weeks[wk];
   $('kCrit').innerText = crit; $('kWatch').innerText = watch; $('kAnimal').innerText = an; $('kHuman').innerText = hu;
   if (L.heatLayer) { if (heat) map.removeLayer(heat);
-    heat = L.heatLayer(pts, { radius: 55, blur: 40, minOpacity: .3, gradient: { .3: '#10b981', .55: '#f59e0b', .8: '#ef4444' } });
+    heat = L.heatLayer(pts, { radius: 55, blur: 40, minOpacity: .3, gradient: { .3: '#10b981', .55: '#c084fc', .8: '#ec4899' } });
     if ($('lHeat').checked) heat.addTo(map); }
   const ex = exposureMap();
   corridors.forEach(({ c, line }) => { const a = byId[c.from], b = byId[c.to], hot = Math.max(a.S[wk], b.S[wk]), sl = selected && (c.from === selected || c.to === selected);
@@ -325,8 +544,13 @@ function render() {
   if (!selected) selected = D.slice().sort((x, y) => y.S[LAST] - x.S[LAST])[0].id;
   showDistrict(byId[selected]); renderAlerts(); renderMeta();
 }
-function select(id) { selected = id; vaxPlus = 0; $('vx').value = 0; render(); const d = byId[id]; map.panTo([d.lat, d.lon]); }
-function zoomBuf() { $('lBuf').checked = true; grp.buf.addTo(map); map.fitBounds(buffers[selected].getBounds(), { maxZoom: 12 }); }
+function select(id) {
+  selected = id; vaxPlus = 0; $('vx').value = 0;
+  if (!$('lMarkers').checked) { $('lMarkers').checked = true; grp.markers.addTo(map); updateHint(); }
+  render();
+  const d = byId[id]; map.panTo([d.lat, d.lon]);
+}
+function zoomBuf() { $('lBuf').checked = true; grp.buf.addTo(map); updateHint(); map.fitBounds(buffers[selected].getBounds(), { maxZoom: 12 }); }
 
 function showDistrict(d) {
   const s = d.S[wk], st = statusFor(s), tr = trend(d);
@@ -336,21 +560,21 @@ function showDistrict(d) {
   const si = score(d, wk, Math.min(1, d.vax_cov + vaxPlus / 100));
   $('vxv').innerText = vaxPlus; $('dWhat').innerHTML = vaxPlus ? 'with vaccination: <b style="color:' + colorFor(si) + '">' + si + '</b> (' + (si - s).toFixed(1) + ')' : '';
   $('dMeta').innerText = 'Human fever: ' + d.human[wk] + ' | Vax coverage: ' + Math.round(d.vax_cov * 100) + '% | Temp spike: ' + d.temp[wk] + '\u00B0C | Rain deficit: ' + d.rain[wk] + '%';
-  $('dFactors').innerHTML = shareOf(d, wk).map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#38bdf8"></i></div>').join('');
-  $('dMl').innerHTML = d.ml_shares.map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#a78bfa"></i></div>').join('');
+  $('dFactors').innerHTML = shareOf(d, wk).map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#f472b6"></i></div>').join('');
+  $('dMl').innerHTML = d.ml_shares.map((v, i) => '<div class="sm">' + P.factorNames[i] + ' \u2014 ' + v + '%</div><div class="bar"><i style="width:' + v + '%;background:#c084fc"></i></div>').join('');
   $('dDet').innerHTML = 'Isolation Forest: <b>' + d.ml_score[wk] + '</b>/100' + (d.ml_anomaly ? ' <span class="pill" style="background:#ef4444">ANOMALY</span>' : '') +
     ' &middot; CUSUM change-point: <b>' + (d.cusum_week == null ? 'none' : P.weeks[d.cusum_week]) + '</b>';
   $('dAction').innerText = actionFor(st);
   $('dGap').innerText = T('compl') + ': ' + d.complete + '%' + ((d.gap || d.complete < 70) ? ' \u26A0 ' + T('gapwarn') : '');
   $('dTrend').innerHTML = 'Trend ' + (tr.m >= 0 ? '+' : '') + tr.m.toFixed(1) + '/wk \u00B7 projected ' + tr.pts.map(v => Math.round(v)).join(' \u2192 ') +
-    (tr.toCrit ? ' \u00B7 <b style="color:#f59e0b">could reach CRITICAL in ~' + tr.toCrit + ' wk</b>' : '') + ' <span style="color:#64748b">(linear extrapolation)</span>';
+    (tr.toCrit ? ' \u00B7 <b style="color:#f59e0b">could reach CRITICAL in ~' + tr.toCrit + ' wk</b>' : '') + ' <span style="color:#a5b4fc">(linear extrapolation)</span>';
   const Wd = 380, H = 96, n = d.S.length + 2, hmax = Math.max(1, ...d.human);
   const x = i => 10 + i * (Wd - 20) / (n - 1), ys = v => H - 8 - v / 100 * (H - 16), yh = v => H - 8 - v / hmax * (H - 16);
   const l1 = d.S.map((v, i) => x(i) + ',' + ys(v)).join(' '), l2 = d.human.map((v, i) => x(i) + ',' + yh(v)).join(' ');
   const l3 = [d.S[d.S.length - 1]].concat(tr.pts).map((v, i) => x(d.S.length - 1 + i) + ',' + ys(v)).join(' ');
   $('spark').innerHTML = '<line x1="10" x2="370" y1="' + ys(70) + '" y2="' + ys(70) + '" stroke="#ef4444" stroke-dasharray="3 4" opacity=".5"/>' +
-    '<polyline fill="none" stroke="#38bdf8" stroke-width="2" points="' + l1 + '"/><polyline fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="2 4" points="' + l3 + '"/>' +
-    '<polyline fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4 3" points="' + l2 + '"/>' +
+    '<polyline fill="none" stroke="#f472b6" stroke-width="2" points="' + l1 + '"/><polyline fill="none" stroke="#f472b6" stroke-width="2" stroke-dasharray="2 4" points="' + l3 + '"/>' +
+    '<polyline fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="4 3" points="' + l2 + '"/>' +
     (d.cusum_week != null ? '<line x1="' + x(d.cusum_week) + '" x2="' + x(d.cusum_week) + '" y1="4" y2="' + (H - 6) + '" stroke="#f59e0b" opacity=".7"/>' : '') +
     (P.scenario && P.scenario.focus_district === d.name && P.scenario.confirmed_idx != null ? '<line x1="' + x(P.scenario.confirmed_idx) + '" x2="' + x(P.scenario.confirmed_idx) + '" y1="4" y2="' + (H - 6) + '" stroke="#10b981" stroke-width="2"/>' : '') +
     '<circle cx="' + x(wk) + '" cy="' + ys(d.S[wk]) + '" r="4" fill="' + colorFor(s) + '" stroke="#fff"/>';
@@ -384,7 +608,7 @@ function renderAC() {
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start"><button class="btn alt" onclick="closeAC();select(\'' + a.id + '\')">' + T('ac_map') + '</button><button class="btn alt" onclick="copyFor(\'' + a.id + '\')">' + T('ac_copy') + '</button>' +
       '<button class="btn ok" ' + (a.step >= P.steps.length - 1 ? 'disabled' : '') + ' onclick="ack(\'' + a.id + '\')">' + T('adv') + ' &rsaquo;</button></div></div>' +
       '<div class="steps">' + P.steps.map((_, k) => '<i class="' + (k <= a.step ? 'on' : '') + '"></i>').join('') + '</div></div>'; }).join('') : '<div class="sm">' + T('noalert') + '</div>';
-  $('acEvents').innerHTML = P.events.slice(0, 10).map(e => '<div style="margin:2px 0"><span style="color:#64748b">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || '-';
+  $('acEvents').innerHTML = P.events.slice(0, 10).map(e => '<div style="margin:2px 0"><span style="color:#a5b4fc">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || '-';
 }
 function openAC() { $('ac').style.display = 'flex'; renderAC(); }
 function closeAC() { $('ac').style.display = 'none'; }
@@ -399,18 +623,18 @@ async function simulate() { const c = D.filter(d => !P.alerts.some(a => a.id ===
 function renderMeta() {
   $('fresh').innerText = 'Updated ' + new Date(P.generated_at).toLocaleTimeString();
   $('chips').innerHTML = P.sources.map(s => '<span class="chip ' + (/^live/.test(s.mode) ? 'live' : /^(CSV|scenario)/.test(s.mode) ? 'csv' : 'sim') + '" title="' + esc(s.feed + ' \u2014 ' + s.detail) + '">' + esc(s.sector) + ': ' + esc(s.mode.split(' (')[0]) + '</span>').join('');
-  $('events').innerHTML = P.events.slice(0, 8).map(e => '<div style="margin:2px 0"><span style="color:#64748b">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || 'No activity yet.';
+  $('events').innerHTML = P.events.slice(0, 8).map(e => '<div style="margin:2px 0"><span style="color:#a5b4fc">' + new Date(e.ts).toLocaleTimeString() + '</span> ' + esc(e.text) + '</div>').join('') || 'No activity yet.';
   const L2 = P.lead, f = v => v == null ? 'n/a' : v.toFixed(1) + ' wk';
   $('leadBox').innerHTML = 'Animal-side CUSUM change-point precedes the human-case change-point by a median of <b>' + f(L2.cusum_median) + '</b> (n=' + L2.n + ' districts with both signals).';
   const mx = Math.max(.01, ...P.lag.stats.map(s => Math.abs(s.r)));
-  $('lagBox').innerHTML = P.lag.stats.map(s => '<div class="sm">Lag ' + s.lag + ' wk \u2014 r = ' + s.r + (s.lag === P.lag.best ? ' \u2605' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, s.r) / mx * 100 + '%;background:' + (s.lag === P.lag.best ? '#a78bfa' : '#475569') + '"></i></div>').join('');
+  $('lagBox').innerHTML = P.lag.stats.map(s => '<div class="sm">Lag ' + s.lag + ' wk \u2014 r = ' + s.r + (s.lag === P.lag.best ? ' \u2605' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, s.r) / mx * 100 + '%;background:' + (s.lag === P.lag.best ? '#f472b6' : '#c084fc') + '"></i></div>').join('');
   const sim = P.sources.some(s => s.mode.startsWith('simulated')), sc = P.scenario;
   $('evNote').innerText = sc ? (sc.illustrative ? 'ILLUSTRATIVE replay on synthetic data: demonstrates the method only. ' : 'Retrospective replay of a documented case: ') + (sc.source ? 'Source: ' + sc.source + '.' : '')
     : sim ? 'Computed on SIMULATED series built with a ' + P.lag.assumed + '-week lag: validates the pipeline, not the biology. Load real data via data/surveillance.csv.' : 'Computed on supplied data. Treat as retrospective evidence, not a forecast guarantee.';
   const sb = $('scn');
   if (sc) { sb.style.display = 'block'; sb.innerHTML = '<b>CASE REPLAY:</b> ' + esc(sc.title || '') + (sc.illustrative ? ' \u2014 synthetic, for demonstration' : '') + ' \u00B7 use the week slider / Play to watch the detection unfold'; 
     if (sc.confirmed_idx != null) { const w = i => i == null ? 'not flagged' : P.weeks[i], lr = sc.lead_radar, lc = sc.lead_cusum;
-      $('leadBox').innerHTML += '<div style="margin-top:6px;border-top:1px solid #334155;padding-top:6px"><b>Replay \u2014 ' + esc(sc.focus_district || '') + ':</b> radar flag (\u226540) ' + w(sc.radar_idx) + ', CUSUM change-point ' + w(sc.cusum_idx) +
+      $('leadBox').innerHTML += '<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px"><b>Replay \u2014 ' + esc(sc.focus_district || '') + ':</b> radar flag (\u226540) ' + w(sc.radar_idx) + ', CUSUM change-point ' + w(sc.cusum_idx) +
       ', official confirmation <b style="color:#10b981">' + P.weeks[sc.confirmed_idx] + '</b> \u2192 radar lead <b>' + (lr == null ? 'n/a' : lr + ' wk') + '</b>, CUSUM lead <b>' + (lc == null ? 'n/a' : lc + ' wk') + '</b></div>'; } }
   else sb.style.display = 'none';
 }
