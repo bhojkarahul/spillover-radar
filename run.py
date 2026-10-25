@@ -979,6 +979,17 @@ const distHi = {"Barmer":"बाड़मेर", "Jodhpur":"जोधपुर"
 const distMr = {"Barmer":"बाडमेर", "Jodhpur":"जोधपूर", "Bikaner":"बिकानेर", "Jaisalmer":"जैसलमेर", "Jaipur":"जयपूर", "Kutch":"कच्छ", "Ahmednagar":"अहमदनगर", "Pune":"पुणे", "Latur":"लातूर", "Bhopal":"भोपाळ", "Wayanad":"वायनाड", "Kozhikode":"कोझिकोड"};
 const trDist = nm => lang === 'hi' ? (distHi[nm] || nm) : lang === 'mr' ? (distMr[nm] || nm) : nm;
 
+if($('week')) $('week').addEventListener('input', e => { 
+    wk = +e.target.value; 
+    activeHighlightWeek = wk; 
+    render(); 
+});
+
+if($('vx')) $('vx').addEventListener('input', e => { 
+    vaxPlus = +e.target.value; 
+    showDistrict(byId[selected]); 
+});
+
 function applyLang() { 
   document.querySelectorAll('[data-i]').forEach(e => {
     const key = e.dataset.i;

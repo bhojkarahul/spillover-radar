@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T19:51:07+05:30",
+ "generated_at": "2026-10-25T20:31:07+05:30",
  "weeks": [
   "Wk 1",
   "Wk 2",
@@ -1982,51 +1982,23 @@
   {
    "district": "Barmer",
    "id": "barmer",
-   "opened": "2026-10-25T19:47:46+05:30",
-   "step": 4
+   "opened": "2026-10-25T20:31:07+05:30",
+   "step": 0
   },
   {
    "district": "Bikaner",
    "id": "bikaner",
-   "opened": "2026-10-25T19:47:46+05:30",
-   "step": 2
+   "opened": "2026-10-25T20:31:07+05:30",
+   "step": 0
   }
  ],
  "events": [
   {
-   "ts": "2026-10-25T19:51:07+05:30",
-   "text": "Bikaner: Team dispatched"
-  },
-  {
-   "ts": "2026-10-25T19:51:06+05:30",
-   "text": "Bikaner: Verified"
-  },
-  {
-   "ts": "2026-10-25T19:51:04+05:30",
-   "text": "Barmer: Closed"
-  },
-  {
-   "ts": "2026-10-25T19:51:02+05:30",
-   "text": "Barmer: Samples sent"
-  },
-  {
-   "ts": "2026-10-25T19:50:59+05:30",
-   "text": "Barmer: Team dispatched"
-  },
-  {
-   "ts": "2026-10-25T19:50:52+05:30",
-   "text": "Barmer: Verified"
-  },
-  {
-   "ts": "2026-10-25T19:49:27+05:30",
-   "text": "Resource pool optimized: 15 Teams, 25000 Vaccines"
-  },
-  {
-   "ts": "2026-10-25T19:47:46+05:30",
+   "ts": "2026-10-25T20:31:07+05:30",
    "text": "ALERT opened: Bikaner reached 73.9"
   },
   {
-   "ts": "2026-10-25T19:47:46+05:30",
+   "ts": "2026-10-25T20:31:07+05:30",
    "text": "ALERT opened: Barmer reached 88.6"
   }
  ],
