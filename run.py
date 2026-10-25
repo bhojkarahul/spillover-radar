@@ -115,7 +115,7 @@ def fetch_open_meteo(df):
 
 
 STATE = {"scenario": None, "base": None, "payload": None, "alerts": {}, "events": [], "sources": [], "live": False,
-         "climate_mode": "simulated", "last_refresh": None}
+         "climate_mode": "simulated", "last_refresh": None, "pool": {"teams": 15, "vaccines": 25000}}
 LOCK = threading.RLock()
 
 
@@ -233,6 +233,8 @@ def compute_payload():
         base = STATE["base"].copy()
         climate_mode, live, last_refresh = STATE["climate_mode"], STATE["live"], STATE["last_refresh"]
         srcs = list(STATE["sources"])
+        pool = STATE.get("pool", {"teams": 15, "vaccines": 25000})
+
     n = int(base["week"].max()) + 1
     df = base.sort_values(
         ["name", "week"], kind="stable").reset_index(drop=True)
@@ -280,15 +282,20 @@ def compute_payload():
     cohort_mean = df.loc[latest_mask, "risk"].mean()
     df["ml_flag"] = pred & (df["risk"].values > cohort_mean) & latest_mask
 
+    exposure_map = {}
+    for (frm, to, nm, vol) in CORRIDORS:
+        exposure_map[frm.lower()] = exposure_map.get(frm.lower(), 0) + vol
+
     districts = []
     for nm in order:
         idx = np.where(df["name"].values == nm)[0]
         g = df.iloc[idx]
         cw = cusum_week(g["vet"].values)
+        latest_risk = float(g["risk"].iloc[-1])
 
-        seed = int(hashlib.md5(nm.encode()).hexdigest(), 16)
-        teams = (seed % 4) + 1
-        vaccines = ((seed % 20) + 5) * 1500
+        # Calculate downstream priority
+        exp = exposure_map.get(nm.lower(), 0)
+        alloc_priority = latest_risk * (1.0 + 0.3 * exp)
 
         districts.append({
             "id": nm.lower(), "name": nm, "state": g["state"].iloc[0],
@@ -304,8 +311,31 @@ def compute_payload():
             "ml_shares": [int(round(v * 100)) for v in mlsh[idx[-1]]],
             "ml_anomaly": bool(g["ml_flag"].iloc[-1]), "cusum_week": cw,
             "complete": int(comp[nm]), "gap": bool(gap[nm]),
-            "teams": teams, "vaccines": vaccines
+            "alloc_priority": alloc_priority,
+            "teams": 0, "vaccines": 0
         })
+
+    # Execute Greedy Allocation based on Priority Queue
+    teams_left = pool["teams"]
+    vax_left = pool["vaccines"]
+
+    for d in sorted(districts, key=lambda x: x["alloc_priority"], reverse=True):
+        if d["scores"][-1] >= 70:
+            req_t, req_v = 4, 8000
+        elif d["scores"][-1] >= 40:
+            req_t, req_v = 2, 3000
+        elif d["scores"][-1] >= 25:
+            req_t, req_v = 1, 1000
+        else:
+            req_t, req_v = 0, 0
+
+        t_alloc = min(req_t, teams_left)
+        v_alloc = min(req_v, vax_left)
+
+        d["teams"] = t_alloc
+        d["vaccines"] = v_alloc
+        teams_left -= t_alloc
+        vax_left -= v_alloc
 
     now = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     with LOCK:
@@ -340,6 +370,56 @@ def compute_payload():
     return payload
 
 
+def generate_sir_forecast():
+    """ Runs a 60-day Euler method SIR simulation over the corridor network """
+    pop = 100000
+    beta, gamma = 0.35, 0.1
+    days = 60
+
+    with LOCK:
+        payload = STATE.get("payload")
+    if not payload:
+        return {}
+
+    districts, corridors = payload["districts"], payload["corridors"]
+
+    S, I, R = {}, {}, {}
+    # Setup initial compartments
+    for d in districts:
+        nm = d["id"]
+        # Seed infection heavily scaled by current risk anomaly
+        ini_i = max(10, d["scores"][-1] * 12)
+        ini_r = pop * d["vax_cov"]
+        I[nm], R[nm] = [ini_i], [ini_r]
+        S[nm] = [pop - ini_i - ini_r]
+
+    # Build bidirectional connectivity matrix from corridors
+    M = {d["id"]: {} for d in districts}
+    for c in corridors:
+        vol = c["vol"] * 0.08  # Transmission scale factor
+        M[c["from"]][c["to"]] = vol
+        M[c["to"]][c["from"]] = vol
+
+    # Iterate differential equations
+    for t in range(days):
+        for d in districts:
+            nm = d["id"]
+            curr_S, curr_I, curr_R = S[nm][-1], I[nm][-1], R[nm][-1]
+
+            # Sum infectious pressure from neighbors
+            ext_I = sum(I[nb][-1] * w for nb, w in M[nm].items())
+            tot_I = curr_I + ext_I
+
+            new_inf = beta * curr_S * tot_I / pop
+            recov = gamma * curr_I
+
+            S[nm].append(max(0, curr_S - new_inf))
+            I[nm].append(max(0, curr_I + new_inf - recov))
+            R[nm].append(min(pop, curr_R + recov))
+
+    return {"days": days, "S": S, "I": I, "R": R}
+
+
 # --------------------------------------------------------------------------
 # 3. [D.01] DASHBOARD HTML
 # --------------------------------------------------------------------------
@@ -352,7 +432,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<!-- SheetJS seamlessly handles Excel (.xlsx/.xls) and CSV parsing on the frontend -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <style>
  :root {
@@ -579,9 +658,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
  #bell.hot{background:#ec4899;color:#fff}
  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pink);color:#050714;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
  .sm{font-size:12px;color:#e9d5ff}
+ 
+ /* NEW SIR ANIMATION CSS */
+ .flow.sir-active { stroke: #ef4444 !important; stroke-dasharray: 6 12 !important; animation: dash-fast 0.4s linear infinite !important; }
+ @keyframes dash-fast { to { stroke-dashoffset: -30; } }
+ #sirOverlay { display:none; position:absolute; top:70px; left:50%; transform:translateX(-50%); z-index:2000; background:rgba(236,72,153,0.9); padding:8px 24px; border-radius:20px; font-size:16px; font-weight:bold; color:#fff; box-shadow:0 4px 20px rgba(236,72,153,0.6); }
 </style>
 </head>
 <body>
+
+<div id="sirOverlay">Day <span id="sirDay">0</span> / 60</div>
 
 <!-- WELCOME SCREEN -->
 <div id="welcome">
@@ -614,12 +700,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <select id="lang" style="width:auto;margin-left:8px"><option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option></select>
     <button class="btn alt" style="margin-left:4px" onclick="refreshNow()">&#8635; <span data-i="refresh">Refresh</span></button>
     
-    <button class="btn alt" style="margin-left:4px" onclick="importGoogleSheet()">&#128203; <span data-i="g_sheet">Google Sheet</span></button>
     <label class="btn alt" style="display:inline-block;cursor:pointer;margin-left:4px;padding:6px 12px;border-radius:6px;font-weight:600;font-size:12px;background:#191e42;border:1px solid rgba(192,132,252,0.3);color:#e9d5ff;">
-      📁 <span data-i="excel_upload">Upload Excel/CSV</span>
-      <input type="file" id="csvFileUp" accept=".csv, .xlsx, .xls" style="display:none" onchange="handleFileUpload(event)">
+      &#128194; <span data-i="csv_upload">Upload CSV</span>
+      <input type="file" id="csvFileUp" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
     </label>
 
+    <button class="btn alt" style="margin-left:4px" onclick="exportCSV()">Export CSV</button>
     <button class="btn" style="margin-left:4px" onclick="sitrep()"><span data-i="sitrep">Situation report</span></button>
   </div>
 </header>
@@ -675,6 +761,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn alt" onclick="zoomBuf()" data-i="zoom">Zoom to 5 km buffer</button>
         <button class="btn alt" onclick="dispatchDVO()" data-i="notify_dvo">&#128242; Notify DVO (WhatsApp)</button>
+      </div>
+    </div>
+    
+    <!-- NEW SIR EPIDEMIC SIMULATION CARD -->
+    <div class="card">
+      <h4 data-i="sir_title">&#129440; SIR EPIDEMIC SIMULATION</h4>
+      <div class="sm" style="margin-bottom:8px;" data-i="sir_desc">Simulate 60-day network spread across corridors based on current state.</div>
+      <button class="btn" onclick="startSIR()" data-i="sir_btn">Run 60-Day Forecast</button>
+    </div>
+
+    <!-- SMART RESOURCE OPTIMIZER CARD -->
+    <div class="card">
+      <h4 data-i="opt_title">&#9881; SMART RESOURCE ALLOCATOR</h4>
+      <div class="sm" style="margin-bottom:8px;" data-i="opt_desc">Distributes global pool based on risk and corridor exposure.</div>
+      <div class="g3">
+        <input type="number" id="gTeams" value="15" placeholder="Total Teams">
+        <input type="number" id="gVax" value="25000" placeholder="Total Vaccines" step="1000">
+        <button class="btn alt" style="background:#f472b6; color:#050714;" onclick="optimizeRes()" data-i="opt_btn">Optimize</button>
       </div>
     </div>
 
@@ -778,8 +882,10 @@ const I18N = {
   report:'FIELD REPORT INTAKE (live)', expo:'CORRIDOR EXPOSURE INDEX (downstream spread risk)',
   calib:'EXPERT CALIBRATION', log:'RECENT ACTIVITY', rank:'DISTRICT RANKING', 
   zoom:'Zoom to 5 km buffer', copy:'Copy DVO alert message', submit:'Submit report & re-run pipeline',
-  g_sheet:'Google Sheet', excel_upload:'Upload Excel/CSV', map_layers:'Map Layers:', ly_markers:'Markers', ly_heat:'Heatmap', ly_buf:'5 km buffers', 
+  csv_upload:'Upload CSV', map_layers:'Map Layers:', ly_markers:'Markers', ly_heat:'Heatmap', ly_buf:'5 km buffers', 
   ly_cor:'Corridors', ly_lab:'Labels', play:'Play', notify_dvo:'📲 Notify DVO (WhatsApp)', res_avl:'Resources Available:',
+  opt_title:'SMART RESOURCE ALLOCATOR', opt_desc:'Distributes global pool based on risk and corridor exposure.', opt_btn:'Optimize',
+  sir_title:'SIR EPIDEMIC SIMULATION (Phase 2)', sir_desc:'Simulate 60-day network spread across corridors based on current state.', sir_btn:'Run 60-Day Forecast',
   map_hint:'✨ Select layers above one by one or click a district on the right to customize details',
   graph_note:'Pink: risk · drag or click across graph to adjust values & highlight region · purple dashed: human fever.',
   vax_whatif:'What-if ring vaccination',
@@ -804,8 +910,10 @@ const I18N = {
   why:'जोखिम कारक और एआई एट्रिब्यूशन', protocol:'पशु चिकित्सा कार्य-योजना', queue_log:'48 घंटे की प्रतिक्रिया और गतिविधि', 
   report:'क्षेत्र रिपोर्ट दर्ज करें (लाइव)', expo:'गलियारा जोखिम सूचकांक (आगे फैलाव का खतरा)',
   calib:'विशेषज्ञ अंशांकन', log:'हाल की गतिविधि', rank:'जिला क्रम', notify_dvo:'📲 डीवीओ को सूचित करें (WhatsApp)', res_avl:'उपलब्ध संसाधन:',
+  opt_title:'स्मार्ट संसाधन आवंटक', opt_desc:'जोखिम और गलियारा जोखिम के आधार पर वैश्विक पूल वितरित करता है।', opt_btn:'अनुकूलित करें',
+  sir_title:'SIR महामारी सिमुलेशन (चरण 2)', sir_desc:'वर्तमान स्थिति के आधार पर गलियारों में 60-दिवसीय फैलाव का अनुकरण करें।', sir_btn:'60-दिवसीय पूर्वानुमान चलाएँ',
   zoom:'5 किमी क्षेत्र दिखाएँ', copy:'जिला पशु चिकित्सा अधिकारी के लिए अलर्ट कॉपी करें', submit:'रिपोर्ट जमा करें',
-  g_sheet:'गूगल शीट', excel_upload:'एक्सेल/CSV अपलोड करें', map_layers:'मानचित्र परतें:', ly_markers:'मार्कर', ly_heat:'हीटमैप', ly_buf:'5 किमी बफर', 
+  csv_upload:'CSV अपलोड करें', map_layers:'मानचित्र परतें:', ly_markers:'मार्कर', ly_heat:'हीटमैप', ly_buf:'5 किमी बफर', 
   ly_cor:'गलियारे', ly_lab:'लेबल', play:'चलाएँ',
   map_hint:'✨ विवरण अनुकूलित करने के लिए ऊपर दी गई परतों को एक-एक करके चुनें',
   graph_note:'गुलाबी: जोखिम · मान बदलने और क्षेत्र को हाइलाइट करने के लिए ग्राफ़ पर खींचें या क्लिक करें · बैंगनी डैश: मानव बुखार।',
@@ -831,8 +939,10 @@ const I18N = {
   why:'जोखीम चालक आणि एआय गुणधर्म', protocol:'पशुवैद्यकीय कृती योजना', queue_log:'48 तासांची प्रतिक्रिया आणि कृती', 
   report:'क्षेत्र अहवाल नोंदवा (लाइव्ह)', expo:'मार्गिका जोखीम निर्देशांक (पुढील प्रसार धोका)',
   calib:'तज्ज्ञ कॅलिब्रेशन', log:'अलीकडील क्रियाकलाप', rank:'जिल्हा क्रमवारी', notify_dvo:'📲 डीव्हीओला सूचित करा (WhatsApp)', res_avl:'उपलब्ध संसाधने:',
+  opt_title:'स्मार्ट संसाधन वाटप', opt_desc:'जोखीम आणि मार्गिका धोक्यानुसार जागतिक पूल वितरित करते.', opt_btn:'अनुकूल करा',
+  sir_title:'SIR महामारी सिम्युलेशन (टप्पा 2)', sir_desc:'सध्याच्या स्थितीवर आधारित 60-दिवसांच्या मार्गिका प्रसाराचे अनुकरण करा.', sir_btn:'60-दिवसांचा अंदाज चालवा',
   zoom:'5 किमी क्षेत्र दाखवा', copy:'जिल्हा पशुवैद्यकीय अधिकाऱ्यासाठी अलर्ट कॉपी करा', submit:'अहवाल सादर करा',
-  g_sheet:'गुगल शीट', excel_upload:'एक्सेल/CSV अपलोड करा', map_layers:'नकाशा स्तर:', ly_markers:'मार्कर्स', ly_heat:'हिटमॅप', ly_buf:'५ किमी बफर', 
+  csv_upload:'CSV अपलोड करा', map_layers:'नकाशा स्तर:', ly_markers:'मार्कर्स', ly_heat:'हिटमॅप', ly_buf:'५ किमी बफर', 
   ly_cor:'मार्गिका', ly_lab:'लेबल्स', play:'प्ले',
   map_hint:'✨ तपशील अनुकूलित करण्यासाठी वरील स्तर एकामागून एक निवडा',
   graph_note:'गुलाबी: जोखीम · मूल्य बदलण्यासाठी आणि प्रदेश हाईलाइट करण्यासाठी आलेखावर ड्रॅग किंवा क्लिक करा.',
@@ -897,53 +1007,21 @@ function trend(d) { const k = Math.min(4, d.S.length), y = d.S.slice(-k), xm = (
   const m = de ? nu / de : 0, last = y[k - 1];
   return { m, pts: [1, 2].map(h => Math.max(0, Math.min(100, last + m * h))), toCrit: (last < 70 && m > 0.5) ? Math.ceil((70 - last) / m) : null }; }
 
-/* --- SEAMLESS EXCEL / CSV HANDLING VIA SHEETJS --- */
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
+async function handleCSVUpload(e) {
+  const file = e.target.files[0];
   if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const firstSheet = workbook.SheetNames[0];
-      const csvText = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheet]);
-      
-      const p = await post('/api/upload', { csv_data: csvText });
-      ingest(p); 
-      wk = LAST; 
-      if($('week')) $('week').value = LAST; 
-      render(); 
-      toast('Data Uploaded & Dashboard Updated');
-    } catch(err) {
-      toast('Upload failed: ' + err.message, true);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-  event.target.value = '';
-}
-
-/* --- GOOGLE SHEETS DIRECT SYNC --- */
-async function importGoogleSheet() {
-  const url = prompt("Paste your Public Google Sheet URL here:\n(Make sure 'Anyone with the link can view' is enabled)");
-  if (!url) return;
-  
-  toast('Fetching Google Sheet...');
+  const text = await file.text();
   try {
-    let fetchUrl = url;
-    if (url.includes('/edit')) {
-      fetchUrl = url.replace(/\/edit.*$/, '/export?format=csv');
-    }
-    const p = await post('/api/fetch_url', { url: fetchUrl });
-    ingest(p);
+    const p = await post('/api/upload', { csv_data: text });
+    ingest(p); 
     wk = LAST; 
-    if($('week')) $('week').value = LAST; 
+    $('week').value = LAST; 
     render(); 
-    toast('Google Sheet Synced & Dashboard Updated');
+    toast('CSV Uploaded & Dashboard Updated');
   } catch (err) {
-    toast('Failed to sync: ' + err.message, true);
+    toast('Upload failed: ' + err.message, true);
   }
+  e.target.value = '';
 }
 
 function ingest(p) {
@@ -983,8 +1061,6 @@ function initMap() {
     markers[d.id] = L.marker([d.lat, d.lon], { icon: mkIcon(d), riseOnHover: true }).on('click', () => select(d.id));
     buffers[d.id] = L.circle([d.lat, d.lon], { radius: 5000, weight: 1, fillOpacity: .25 });
     labels[d.id] = L.marker([d.lat, d.lon], { icon: L.divIcon({ className: '', iconSize: [0,0], html: '<div class="mkl" style="position:absolute; transform:translate(-50%, 14px); color:#f5f3ff; text-shadow:0 0 4px #000; font-weight:bold; pointer-events:none; font-size:11px;">' + esc(trDist(d.name)) + '</div>' }) });
-    
-    // Add layers to groups, but DO NOT add the groups to the map yet!
     grp.markers.addLayer(markers[d.id]);
     grp.buf.addLayer(buffers[d.id]);
     grp.labels.addLayer(labels[d.id]);
@@ -999,8 +1075,6 @@ function initMap() {
   });
   if($('rDist')) $('rDist').innerHTML = D.map(d => '<option value="' + esc(d.name) + '">' + esc(d.name) + ', ' + esc(d.state) + '</option>').join('');
   
-  // NOTE: Markers and labels are NOT added to the map initially.
-
   const tg = (id, key) => { if($(id)) $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); updateHint(); render(); }); };
   tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor'); tg('lLab', 'labels');
   
@@ -1259,7 +1333,61 @@ function renderMeta() {
 async function post(u, b) { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
   const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; }
 
-/* --- OPTIMISTIC UI UPDATING FOR INSTANT FIELD REPORTS --- */
+async function optimizeRes() {
+  try {
+    const t = +$('gTeams').value || 0;
+    const v = +$('gVax').value || 0;
+    const p = await post('/api/optimize', { teams: t, vax: v });
+    ingest(p); wk = LAST; if($('week')) $('week').value = LAST; render(); toast('Resources re-allocated optimally');
+  } catch (e) { toast('Needs the run.py server: ' + e.message, true); }
+}
+
+let sirData = null, sirInterval = null, sirMarkers = {};
+async function startSIR() {
+  if(sirInterval) clearInterval(sirInterval);
+  $('sirOverlay').style.display = 'block';
+  toast('Calculating SIR differential equations...');
+  try {
+    sirData = await post('/api/forecast_sir', {});
+    
+    // Add pulsing markers for SIR
+    D.forEach(d => {
+      if(sirMarkers[d.id]) map.removeLayer(sirMarkers[d.id]);
+      sirMarkers[d.id] = L.circleMarker([d.lat, d.lon], {radius: 5, color: '#f472b6', fillColor: '#ef4444', fillOpacity: 0.7, weight: 2}).addTo(map);
+    });
+    
+    // Animate the corridors
+    Object.values(corridors).forEach(c => c.line.setStyle({ className: 'flow sir-active' }));
+    
+    let day = 0;
+    sirInterval = setInterval(() => {
+      $('sirDay').innerText = day;
+      D.forEach(d => {
+        const inf = sirData.I[d.id][day];
+        // Scale radius visually by infected population count
+        const r = 5 + Math.sqrt(inf) * 0.12;
+        const pct = inf / 100000;
+        // Shift color to intense red if infection spikes
+        const col = pct > 0.08 ? '#ef4444' : pct > 0.02 ? '#f59e0b' : '#10b981';
+        sirMarkers[d.id].setRadius(r).setStyle({color: col, fillColor: col});
+      });
+      
+      day++;
+      if(day > sirData.days) {
+        clearInterval(sirInterval);
+        setTimeout(() => {
+          $('sirOverlay').style.display = 'none';
+          Object.values(sirMarkers).forEach(m => map.removeLayer(m));
+          Object.values(corridors).forEach(c => c.line.setStyle({ className: 'flow' }));
+        }, 2500);
+      }
+    }, 120);
+  } catch(e) {
+    toast('SIR Failed: ' + e.message, true);
+    $('sirOverlay').style.display = 'none';
+  }
+}
+
 async function sendReport() {
   try { 
     const distInput = $('rDist').value;
@@ -1267,7 +1395,6 @@ async function sendReport() {
     const de = +$('rDe').value || 0;
     const pp = +$('rPp').value || 0;
     
-    // Optimistic UI Update locally
     const dObj = D.find(x => x.name === distInput);
     if(dObj) {
       dObj.abortions[LAST] += ab;
@@ -1278,7 +1405,6 @@ async function sendReport() {
       render();
     }
     
-    // Sync with backend
     const p = await post('/api/report', { district: distInput, abortions: ab, deaths: de, ppr: pp });
     ingest(p); wk = LAST; if($('week')) $('week').value = LAST; 
     if (dObj) selected = dObj.id; 
@@ -1390,6 +1516,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         route = self.path.split("?")[0]
         try:
             if route == "/api/upload":
+                import io
                 csv_text = body.get("csv_data", "")
                 try:
                     new_df = pd.read_csv(io.StringIO(csv_text))
@@ -1399,9 +1526,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     with LOCK:
                         STATE["base"] = new_df.reset_index(drop=True)
                         STATE["scenario"] = None
-                        STATE["climate_mode"] = "User Uploaded Data"
+                        STATE["climate_mode"] = "User Uploaded CSV"
                         log_event(
-                            f"New Data uploaded: {new_df['name'].nunique()} districts")
+                            f"New CSV uploaded: {new_df['name'].nunique()} districts")
                 except Exception as e:
                     return self._json({"error": str(e)}, 400)
 
@@ -1424,6 +1551,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             f"Google Sheet synced: {new_df['name'].nunique()} districts")
                 except Exception as e:
                     return self._json({"error": str(e)}, 400)
+
+            elif route == "/api/optimize":
+                teams = int(body.get("teams", 15))
+                vax = int(body.get("vax", 25000))
+                with LOCK:
+                    STATE["pool"] = {"teams": max(
+                        0, teams), "vaccines": max(0, vax)}
+                    log_event(
+                        f"Resource pool optimized: {teams} Teams, {vax} Vaccines")
+
+            elif route == "/api/forecast_sir":
+                return self._json(generate_sir_forecast())
 
             elif route == "/api/report":
                 name = str(body.get("district", ""))

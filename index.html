@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<!-- SheetJS seamlessly handles Excel (.xlsx/.xls) and CSV parsing on the frontend -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <style>
  :root {
@@ -234,9 +233,16 @@
  #bell.hot{background:#ec4899;color:#fff}
  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pink);color:#050714;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;display:none;z-index:9999}
  .sm{font-size:12px;color:#e9d5ff}
+ 
+ /* NEW SIR ANIMATION CSS */
+ .flow.sir-active { stroke: #ef4444 !important; stroke-dasharray: 6 12 !important; animation: dash-fast 0.4s linear infinite !important; }
+ @keyframes dash-fast { to { stroke-dashoffset: -30; } }
+ #sirOverlay { display:none; position:absolute; top:70px; left:50%; transform:translateX(-50%); z-index:2000; background:rgba(236,72,153,0.9); padding:8px 24px; border-radius:20px; font-size:16px; font-weight:bold; color:#fff; box-shadow:0 4px 20px rgba(236,72,153,0.6); }
 </style>
 </head>
 <body>
+
+<div id="sirOverlay">Day <span id="sirDay">0</span> / 60</div>
 
 <!-- WELCOME SCREEN -->
 <div id="welcome">
@@ -269,12 +275,12 @@
     <select id="lang" style="width:auto;margin-left:8px"><option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option></select>
     <button class="btn alt" style="margin-left:4px" onclick="refreshNow()">&#8635; <span data-i="refresh">Refresh</span></button>
     
-    <button class="btn alt" style="margin-left:4px" onclick="importGoogleSheet()">&#128203; <span data-i="g_sheet">Google Sheet</span></button>
     <label class="btn alt" style="display:inline-block;cursor:pointer;margin-left:4px;padding:6px 12px;border-radius:6px;font-weight:600;font-size:12px;background:#191e42;border:1px solid rgba(192,132,252,0.3);color:#e9d5ff;">
-      📁 <span data-i="excel_upload">Upload Excel/CSV</span>
-      <input type="file" id="csvFileUp" accept=".csv, .xlsx, .xls" style="display:none" onchange="handleFileUpload(event)">
+      &#128194; <span data-i="csv_upload">Upload CSV</span>
+      <input type="file" id="csvFileUp" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
     </label>
 
+    <button class="btn alt" style="margin-left:4px" onclick="exportCSV()">Export CSV</button>
     <button class="btn" style="margin-left:4px" onclick="sitrep()"><span data-i="sitrep">Situation report</span></button>
   </div>
 </header>
@@ -330,6 +336,24 @@
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn alt" onclick="zoomBuf()" data-i="zoom">Zoom to 5 km buffer</button>
         <button class="btn alt" onclick="dispatchDVO()" data-i="notify_dvo">&#128242; Notify DVO (WhatsApp)</button>
+      </div>
+    </div>
+    
+    <!-- NEW SIR EPIDEMIC SIMULATION CARD -->
+    <div class="card">
+      <h4 data-i="sir_title">&#129440; SIR EPIDEMIC SIMULATION</h4>
+      <div class="sm" style="margin-bottom:8px;" data-i="sir_desc">Simulate 60-day network spread across corridors based on current state.</div>
+      <button class="btn" onclick="startSIR()" data-i="sir_btn">Run 60-Day Forecast</button>
+    </div>
+
+    <!-- SMART RESOURCE OPTIMIZER CARD -->
+    <div class="card">
+      <h4 data-i="opt_title">&#9881; SMART RESOURCE ALLOCATOR</h4>
+      <div class="sm" style="margin-bottom:8px;" data-i="opt_desc">Distributes global pool based on risk and corridor exposure.</div>
+      <div class="g3">
+        <input type="number" id="gTeams" value="15" placeholder="Total Teams">
+        <input type="number" id="gVax" value="25000" placeholder="Total Vaccines" step="1000">
+        <button class="btn alt" style="background:#f472b6; color:#050714;" onclick="optimizeRes()" data-i="opt_btn">Optimize</button>
       </div>
     </div>
 
@@ -433,8 +457,10 @@ const I18N = {
   report:'FIELD REPORT INTAKE (live)', expo:'CORRIDOR EXPOSURE INDEX (downstream spread risk)',
   calib:'EXPERT CALIBRATION', log:'RECENT ACTIVITY', rank:'DISTRICT RANKING', 
   zoom:'Zoom to 5 km buffer', copy:'Copy DVO alert message', submit:'Submit report & re-run pipeline',
-  g_sheet:'Google Sheet', excel_upload:'Upload Excel/CSV', map_layers:'Map Layers:', ly_markers:'Markers', ly_heat:'Heatmap', ly_buf:'5 km buffers', 
+  csv_upload:'Upload CSV', map_layers:'Map Layers:', ly_markers:'Markers', ly_heat:'Heatmap', ly_buf:'5 km buffers', 
   ly_cor:'Corridors', ly_lab:'Labels', play:'Play', notify_dvo:'📲 Notify DVO (WhatsApp)', res_avl:'Resources Available:',
+  opt_title:'SMART RESOURCE ALLOCATOR', opt_desc:'Distributes global pool based on risk and corridor exposure.', opt_btn:'Optimize',
+  sir_title:'SIR EPIDEMIC SIMULATION (Phase 2)', sir_desc:'Simulate 60-day network spread across corridors based on current state.', sir_btn:'Run 60-Day Forecast',
   map_hint:'✨ Select layers above one by one or click a district on the right to customize details',
   graph_note:'Pink: risk · drag or click across graph to adjust values & highlight region · purple dashed: human fever.',
   vax_whatif:'What-if ring vaccination',
@@ -459,8 +485,10 @@ const I18N = {
   why:'जोखिम कारक और एआई एट्रिब्यूशन', protocol:'पशु चिकित्सा कार्य-योजना', queue_log:'48 घंटे की प्रतिक्रिया और गतिविधि', 
   report:'क्षेत्र रिपोर्ट दर्ज करें (लाइव)', expo:'गलियारा जोखिम सूचकांक (आगे फैलाव का खतरा)',
   calib:'विशेषज्ञ अंशांकन', log:'हाल की गतिविधि', rank:'जिला क्रम', notify_dvo:'📲 डीवीओ को सूचित करें (WhatsApp)', res_avl:'उपलब्ध संसाधन:',
+  opt_title:'स्मार्ट संसाधन आवंटक', opt_desc:'जोखिम और गलियारा जोखिम के आधार पर वैश्विक पूल वितरित करता है।', opt_btn:'अनुकूलित करें',
+  sir_title:'SIR महामारी सिमुलेशन (चरण 2)', sir_desc:'वर्तमान स्थिति के आधार पर गलियारों में 60-दिवसीय फैलाव का अनुकरण करें।', sir_btn:'60-दिवसीय पूर्वानुमान चलाएँ',
   zoom:'5 किमी क्षेत्र दिखाएँ', copy:'जिला पशु चिकित्सा अधिकारी के लिए अलर्ट कॉपी करें', submit:'रिपोर्ट जमा करें',
-  g_sheet:'गूगल शीट', excel_upload:'एक्सेल/CSV अपलोड करें', map_layers:'मानचित्र परतें:', ly_markers:'मार्कर', ly_heat:'हीटमैप', ly_buf:'5 किमी बफर', 
+  csv_upload:'CSV अपलोड करें', map_layers:'मानचित्र परतें:', ly_markers:'मार्कर', ly_heat:'हीटमैप', ly_buf:'5 किमी बफर', 
   ly_cor:'गलियारे', ly_lab:'लेबल', play:'चलाएँ',
   map_hint:'✨ विवरण अनुकूलित करने के लिए ऊपर दी गई परतों को एक-एक करके चुनें',
   graph_note:'गुलाबी: जोखिम · मान बदलने और क्षेत्र को हाइलाइट करने के लिए ग्राफ़ पर खींचें या क्लिक करें · बैंगनी डैश: मानव बुखार।',
@@ -486,8 +514,10 @@ const I18N = {
   why:'जोखीम चालक आणि एआय गुणधर्म', protocol:'पशुवैद्यकीय कृती योजना', queue_log:'48 तासांची प्रतिक्रिया आणि कृती', 
   report:'क्षेत्र अहवाल नोंदवा (लाइव्ह)', expo:'मार्गिका जोखीम निर्देशांक (पुढील प्रसार धोका)',
   calib:'तज्ज्ञ कॅलिब्रेशन', log:'अलीकडील क्रियाकलाप', rank:'जिल्हा क्रमवारी', notify_dvo:'📲 डीव्हीओला सूचित करा (WhatsApp)', res_avl:'उपलब्ध संसाधने:',
+  opt_title:'स्मार्ट संसाधन वाटप', opt_desc:'जोखीम आणि मार्गिका धोक्यानुसार जागतिक पूल वितरित करते.', opt_btn:'अनुकूल करा',
+  sir_title:'SIR महामारी सिम्युलेशन (टप्पा 2)', sir_desc:'सध्याच्या स्थितीवर आधारित 60-दिवसांच्या मार्गिका प्रसाराचे अनुकरण करा.', sir_btn:'60-दिवसांचा अंदाज चालवा',
   zoom:'5 किमी क्षेत्र दाखवा', copy:'जिल्हा पशुवैद्यकीय अधिकाऱ्यासाठी अलर्ट कॉपी करा', submit:'अहवाल सादर करा',
-  g_sheet:'गुगल शीट', excel_upload:'एक्सेल/CSV अपलोड करा', map_layers:'नकाशा स्तर:', ly_markers:'मार्कर्स', ly_heat:'हिटमॅप', ly_buf:'५ किमी बफर', 
+  csv_upload:'CSV अपलोड करा', map_layers:'नकाशा स्तर:', ly_markers:'मार्कर्स', ly_heat:'हिटमॅप', ly_buf:'५ किमी बफर', 
   ly_cor:'मार्गिका', ly_lab:'लेबल्स', play:'प्ले',
   map_hint:'✨ तपशील अनुकूलित करण्यासाठी वरील स्तर एकामागून एक निवडा',
   graph_note:'गुलाबी: जोखीम · मूल्य बदलण्यासाठी आणि प्रदेश हाईलाइट करण्यासाठी आलेखावर ड्रॅग किंवा क्लिक करा.',
@@ -530,7 +560,7 @@ function applyLang() {
     if (T(key)) e.textContent = T(key);
   });
 }
-let P = {"generated_at": "2026-10-25T18:53:59+05:30", "weeks": ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"], "factorNames": ["Livestock Deaths, Abortions & PPR", "Thermal Shock & Rainfall Deficit", "Vaccination Coverage Deficit"], "weights": [0.5, 0.25, 0.25], "ref_cap": [60.0, 10.0, 10.0], "districts": [{"id": "barmer", "name": "Barmer", "state": "Rajasthan", "lat": 25.7532, "lon": 71.3967, "vet": [23.0, 27.0, 27.0, 39.5, 44.5, 51.5, 50.0, 61.0], "clim": [3.25, 3.88, 4.37, 5.38, 6.25, 6.82, 8.09, 8.65], "vax_cov": 0.32, "scores": [44.3, 49.2, 50.4, 63.4, 69.7, 77.0, 78.9, 88.6], "human": [6, 6, 7, 7, 7, 10, 13, 14], "deaths": [2, 2, 2, 3, 4, 5, 4, 5], "abortions": [3, 4, 4, 5, 6, 6, 7, 8], "ppr": [5, 6, 6, 10, 9, 11, 11, 14], "temp": [1.22, 1.43, 1.59, 1.91, 2.3, 2.31, 2.86, 3.1], "rain": [15.8, 19.6, 22.6, 29.1, 31.6, 39.9, 44.2, 46.0], "shares": [[43, 18, 38], [46, 20, 35], [45, 22, 34], [52, 21, 27], [53, 22, 24], [56, 22, 22], [53, 26, 22], [56, 24, 19]], "ml_score": [55, 37, 30, 45, 50, 58, 65, 100], "ml_shares": [56, 33, 11], "ml_anomaly": true, "cusum_week": 3, "complete": 100, "gap": false, "teams": 4, "vaccines": 30000}, {"id": "jodhpur", "name": "Jodhpur", "state": "Rajasthan", "lat": 26.2389, "lon": 73.0243, "vet": [23.0, 24.5, 27.0, 27.0, 32.5, 32.5, 35.5, 38.0], "clim": [4.15, 4.43, 5.12, 5.71, 6.05, 6.05, 6.84, 6.85], "vax_cov": 0.41, "scores": [44.3, 46.2, 50.1, 51.5, 57.0, 56.9, 61.4, 63.6], "human": [7, 7, 6, 7, 8, 8, 9, 9], "deaths": [2, 2, 2, 2, 3, 2, 3, 3], "abortions": [3, 3, 4, 4, 4, 5, 4, 5], "ppr": [5, 6, 6, 6, 7, 8, 9, 9], "temp": [1.39, 1.49, 1.76, 1.97, 2.05, 2.14, 2.53, 2.4], "rain": [24.7, 26.2, 29.3, 32.5, 35.4, 32.9, 34.3, 38.0], "shares": [[43, 23, 33], [44, 24, 32], [45, 26, 29], [44, 28, 29], [48, 27, 26], [48, 27, 26], [48, 28, 24], [50, 27, 23]], "ml_score": [14, 9, 8, 9, 15, 14, 19, 22], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 100, "gap": false, "teams": 4, "vaccines": 18000}, {"id": "bikaner", "name": "Bikaner", "state": "Rajasthan", "lat": 28.0229, "lon": 73.3119, "vet": [27.0, 26.0, 32.5, 35.5, 35.5, 39.5, 43.5, 47.5], "clim": [4.27, 4.31, 4.95, 5.67, 6.82, 6.96, 7.65, 7.53], "vax_cov": 0.38, "scores": [48.7, 47.9, 54.9, 59.3, 62.1, 65.8, 70.9, 73.9], "human": [8, 8, 7, 7, 9, 9, 10, 11], "deaths": [2, 2, 3, 3, 3, 3, 3, 4], "abortions": [4, 3, 4, 4, 4, 5, 6, 6], "ppr": [6, 7, 7, 9, 9, 10, 11, 11], "temp": [1.55, 1.46, 1.77, 2.03, 2.61, 2.49, 2.97, 2.7], "rain": [22.2, 25.2, 26.4, 30.3, 31.8, 37.1, 34.5, 40.0], "shares": [[46, 22, 32], [45, 22, 32], [49, 23, 28], [50, 24, 26], [48, 27, 25], [50, 26, 24], [51, 27, 22], [54, 25, 21]], "ml_score": [15, 15, 27, 25, 21, 28, 44, 49], "ml_shares": [0, 0, 0], "ml_anomaly": true, "cusum_week": 4, "complete": 100, "gap": false, "teams": 1, "vaccines": 13500}, {"id": "jaisalmer", "name": "Jaisalmer", "state": "Rajasthan", "lat": 26.9157, "lon": 70.9083, "vet": [15.0, 21.5, 25.5, 24.5, 27.0, 31.0, 38.0, 36.5], "clim": [3.91, 4.68, 5.43, 5.95, 7.11, 7.24, 7.31, 8.15], "vax_cov": 0.44, "scores": [36.3, 43.6, 48.8, 49.3, 54.3, 57.9, 63.9, 64.8], "human": [4, 4, 3, 6, 6, 7, 7, 8], "deaths": [1, 2, 2, 2, 2, 2, 3, 3], "abortions": [2, 3, 4, 3, 4, 5, 5, 5], "ppr": [4, 4, 5, 6, 6, 7, 9, 8], "temp": [1.33, 1.76, 1.9, 2.11, 2.62, 2.72, 2.64, 2.9], "rain": [22.8, 22.7, 30.1, 32.3, 35.9, 35.2, 38.4, 44.0], "shares": [[34, 27, 39], [41, 27, 32], [44, 28, 29], [41, 30, 28], [41, 33, 26], [45, 31, 24], [50, 29, 22], [47, 31, 22]], "ml_score": [27, 16, 11, 16, 32, 32, 35, 53], "ml_shares": [0, 100, 0], "ml_anomaly": true, "cusum_week": 6, "complete": 100, "gap": false, "teams": 1, "vaccines": 13500}, {"id": "jaipur", "name": "Jaipur", "state": "Rajasthan", "lat": 26.9124, "lon": 75.7873, "vet": [13.5, 13.5, 17.5, 17.5, 17.5, 16.0, 17.5, 17.5], "clim": [3.62, 3.33, 3.62, 3.62, 3.77, 3.96, 4.59, 4.35], "vax_cov": 0.63, "scores": [29.6, 28.8, 32.9, 32.9, 33.3, 32.5, 35.3, 34.7], "human": [5, 4, 3, 4, 5, 5, 5, 4], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 3, 3, 3, 3, 3, 3], "ppr": [3, 3, 4, 4, 4, 3, 4, 4], "temp": [1.36, 1.23, 1.36, 1.28, 1.33, 1.4, 1.7, 1.6], "rain": [17.6, 16.7, 17.6, 19.8, 20.7, 21.6, 23.0, 22.0], "shares": [[38, 31, 31], [39, 29, 32], [44, 28, 28], [44, 28, 28], [44, 28, 28], [41, 30, 28], [41, 33, 26], [42, 31, 27]], "ml_score": [12, 14, 0, 0, 0, 10, 11, 6], "ml_shares": [0, 75, 25], "ml_anomaly": false, "cusum_week": 7, "complete": 100, "gap": false, "teams": 2, "vaccines": 33000}, {"id": "kutch", "name": "Kutch", "state": "Gujarat", "lat": 23.242, "lon": 69.6669, "vet": [17.5, 15.0, 20.5, 24.5, 27.0, 27.0, 28.5, 28.5], "clim": [3.82, 4.24, 4.37, 4.33, 5.39, 5.99, 5.2, 6.03], "vax_cov": 0.52, "scores": [36.1, 35.1, 40.0, 43.2, 48.0, 49.5, 48.7, 50.8], "human": [6, 5, 5, 4, 5, 6, 8, 7], "deaths": [1, 1, 1, 2, 2, 2, 2, 2], "abortions": [3, 2, 3, 3, 4, 4, 4, 4], "ppr": [4, 4, 6, 6, 6, 6, 7, 7], "temp": [1.37, 1.48, 1.55, 1.47, 1.95, 2.26, 1.84, 2.2], "rain": [20.3, 23.6, 23.7, 25.2, 28.2, 28.8, 28.3, 31.0], "shares": [[40, 26, 33], [36, 30, 34], [43, 27, 30], [47, 25, 28], [47, 28, 25], [45, 30, 24], [49, 27, 25], [47, 30, 24]], "ml_score": [12, 16, 9, 12, 17, 21, 21, 25], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true, "teams": 4, "vaccines": 36000}, {"id": "ahmednagar", "name": "Ahmednagar", "state": "Maharashtra", "lat": 19.0948, "lon": 74.748, "vet": [18.5, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0], "clim": [2.88, 2.95, 3.24, 3.34, 3.1, 3.42, 3.77, 3.72], "vax_cov": 0.66, "scores": [31.1, 32.5, 33.3, 33.5, 32.9, 33.7, 34.6, 34.5], "human": [5, 5, 5, 6, 6, 6, 6, 5], "deaths": [2, 2, 2, 2, 2, 2, 2, 2], "abortions": [3, 3, 3, 3, 3, 3, 3, 3], "ppr": [2, 3, 3, 3, 3, 3, 3, 3], "temp": [1.18, 1.08, 1.25, 1.24, 1.11, 1.29, 1.4, 1.4], "rain": [11.3, 15.1, 14.8, 16.6, 16.6, 16.4, 18.8, 18.0], "shares": [[50, 23, 27], [51, 23, 26], [50, 24, 26], [50, 25, 25], [51, 24, 26], [49, 25, 25], [48, 27, 25], [48, 27, 25]], "ml_score": [28, 16, 7, 5, 9, 6, 10, 8], "ml_shares": [0, 0, 100], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "teams": 1, "vaccines": 7500}, {"id": "pune", "name": "Pune", "state": "Maharashtra", "lat": 18.5204, "lon": 73.8567, "vet": [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0], "clim": [2.79, 2.82, 2.87, 2.79, 2.91, 2.94, 2.67, 2.78], "vax_cov": 0.74, "scores": [21.0, 21.0, 21.2, 21.0, 21.3, 21.3, 20.7, 21.0], "human": [3, 3, 3, 2, 3, 2, 3, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [0, 0, 0, 0, 0, 0, 0, 0], "temp": [1.1, 1.08, 1.16, 1.03, 1.15, 1.19, 1.03, 1.1], "rain": [12.1, 13.1, 11.7, 14.0, 12.6, 11.9, 12.2, 12.0], "shares": [[36, 33, 31], [36, 33, 31], [35, 34, 31], [36, 33, 31], [35, 34, 31], [35, 34, 30], [36, 32, 31], [36, 33, 31]], "ml_score": [8, 13, 14, 8, 15, 21, 35, 12], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "teams": 1, "vaccines": 7500}, {"id": "latur", "name": "Latur", "state": "Maharashtra", "lat": 18.4088, "lon": 76.5604, "vet": [13.5, 15.0, 15.0, 19.0, 17.5, 19.0, 17.5, 17.5], "clim": [3.39, 3.88, 3.96, 4.2, 4.73, 4.95, 4.55, 4.97], "vax_cov": 0.58, "scores": [30.2, 32.7, 32.9, 36.8, 36.9, 38.7, 36.5, 37.5], "human": [4, 3, 5, 4, 5, 5, 5, 6], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 3, 3, 3, 3, 3], "ppr": [3, 4, 4, 5, 4, 5, 4, 4], "temp": [1.2, 1.4, 1.38, 1.49, 1.67, 1.7, 1.66, 1.8], "rain": [18.4, 20.4, 22.2, 22.7, 25.9, 28.4, 23.5, 26.0], "shares": [[37, 28, 35], [38, 30, 32], [38, 30, 32], [43, 28, 29], [40, 32, 28], [41, 32, 27], [40, 31, 29], [39, 33, 28]], "ml_score": [19, 5, 6, 6, 6, 17, 3, 13], "ml_shares": [0, 100, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true, "teams": 2, "vaccines": 27000}, {"id": "bhopal", "name": "Bhopal", "state": "Madhya Pradesh", "lat": 23.2599, "lon": 77.4126, "vet": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "clim": [2.83, 2.78, 2.99, 3.07, 3.04, 3.53, 2.96, 3.09], "vax_cov": 0.71, "scores": [24.3, 24.2, 24.7, 24.9, 24.8, 26.1, 24.6, 25.0], "human": [3, 3, 3, 4, 4, 3, 4, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [2, 2, 2, 2, 2, 2, 2, 2], "temp": [1.06, 0.99, 1.16, 1.18, 1.21, 1.38, 1.1, 1.2], "rain": [13.8, 14.9, 13.6, 14.2, 12.9, 15.7, 14.7, 14.0], "shares": [[41, 29, 30], [41, 29, 30], [40, 30, 29], [40, 31, 29], [40, 31, 29], [38, 34, 28], [41, 30, 29], [40, 31, 29]], "ml_score": [13, 18, 4, 4, 4, 28, 6, 6], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "teams": 2, "vaccines": 21000}, {"id": "wayanad", "name": "Wayanad", "state": "Kerala", "lat": 11.6854, "lon": 76.132, "vet": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "clim": [0.58, 0.54, 0.58, 0.58, 0.5, 0.56, 0.52, 0.54], "vax_cov": 0.89, "scores": [7.5, 7.4, 7.5, 7.5, 7.3, 7.5, 7.4, 7.4], "human": [1, 1, 1, 1, 0, 1, 0, 0], "deaths": [0, 0, 0, 0, 0, 0, 0, 0], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.32, 0.3, 0.32, 0.32, 0.28, 0.31, 0.29, 0.3], "rain": [-4.5, -4.1, -4.1, -3.7, -3.8, -4.0, -3.9, -4.0], "shares": [[44, 19, 37], [45, 18, 37], [44, 19, 37], [44, 19, 37], [45, 17, 37], [45, 19, 37], [45, 18, 37], [45, 18, 37]], "ml_score": [48, 40, 48, 48, 71, 54, 58, 40], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "teams": 1, "vaccines": 19500}, {"id": "kozhikode", "name": "Kozhikode", "state": "Kerala", "lat": 11.2588, "lon": 75.7804, "vet": [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0], "clim": [1.14, 0.95, 1.21, 1.18, 1.15, 0.99, 1.01, 1.03], "vax_cov": 0.86, "scores": [13.0, 12.5, 13.2, 13.1, 13.0, 12.6, 12.7, 12.8], "human": [4, 2, 2, 2, 1, 2, 2, 3], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.55, 0.45, 0.59, 0.58, 0.55, 0.48, 0.49, 0.5], "rain": [2.2, 2.1, 2.2, 2.1, 2.4, 1.9, 1.9, 2.0], "shares": [[51, 22, 27], [53, 19, 28], [51, 23, 27], [51, 23, 27], [51, 22, 27], [53, 20, 28], [53, 20, 28], [52, 20, 27]], "ml_score": [36, 53, 48, 40, 34, 37, 33, 38], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "teams": 3, "vaccines": 22500}], "steps": ["Flagged", "Verified", "Team dispatched", "Samples sent", "Closed"], "alerts": [{"district": "Barmer", "id": "barmer", "opened": "2026-10-25T18:53:59+05:30", "step": 0}, {"district": "Bikaner", "id": "bikaner", "opened": "2026-10-25T18:53:59+05:30", "step": 0}], "events": [{"ts": "2026-10-25T18:53:59+05:30", "text": "ALERT opened: Bikaner reached 73.9"}, {"ts": "2026-10-25T18:53:59+05:30", "text": "ALERT opened: Barmer reached 88.6"}], "sources": [{"sector": "Animal health", "mode": "simulated", "detail": "synthetic demo series", "feed": "NADRES / state AH dept"}, {"sector": "Human health", "mode": "simulated", "detail": "synthetic demo series", "feed": "IDSP / IHIP"}, {"sector": "Climate", "mode": "simulated", "detail": "last refresh n/a", "feed": "IMD / Open-Meteo"}], "live": false, "corridors": [{"from": "barmer", "to": "jodhpur", "name": "Marwar cattle route", "vol": 0.9}, {"from": "barmer", "to": "jaisalmer", "name": "Thar border route", "vol": 0.5}, {"from": "barmer", "to": "kutch", "name": "Kutch\u2013Barmer trade route", "vol": 0.6}, {"from": "jodhpur", "to": "bikaner", "name": "Western Rajasthan fair route", "vol": 0.6}, {"from": "jodhpur", "to": "jaipur", "name": "Jaipur mandi route", "vol": 0.9}, {"from": "jaipur", "to": "bhopal", "name": "Central India transit", "vol": 0.7}, {"from": "pune", "to": "ahmednagar", "name": "Deccan route", "vol": 0.8}, {"from": "ahmednagar", "to": "latur", "name": "Marathwada route", "vol": 0.6}, {"from": "bhopal", "to": "ahmednagar", "name": "Satpura transit", "vol": 0.5}, {"from": "kozhikode", "to": "wayanad", "name": "Malabar hill route", "vol": 0.4}], "webhook": false, "scenario": null}, D, byId, W = P.weights.slice(), REF = P.ref_cap, LAST, wk, selected = null, playing = null, vaxPlus = 0, inited = false;
+let P = {"generated_at": "2026-10-25T19:47:46+05:30", "weeks": ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5", "Wk 6", "Wk 7", "Wk 8"], "factorNames": ["Livestock Deaths, Abortions & PPR", "Thermal Shock & Rainfall Deficit", "Vaccination Coverage Deficit"], "weights": [0.5, 0.25, 0.25], "ref_cap": [60.0, 10.0, 10.0], "districts": [{"id": "barmer", "name": "Barmer", "state": "Rajasthan", "lat": 25.7532, "lon": 71.3967, "vet": [23.0, 27.0, 27.0, 39.5, 44.5, 51.5, 50.0, 61.0], "clim": [3.25, 3.88, 4.37, 5.38, 6.25, 6.82, 8.09, 8.65], "vax_cov": 0.32, "scores": [44.3, 49.2, 50.4, 63.4, 69.7, 77.0, 78.9, 88.6], "human": [6, 6, 7, 7, 7, 10, 13, 14], "deaths": [2, 2, 2, 3, 4, 5, 4, 5], "abortions": [3, 4, 4, 5, 6, 6, 7, 8], "ppr": [5, 6, 6, 10, 9, 11, 11, 14], "temp": [1.22, 1.43, 1.59, 1.91, 2.3, 2.31, 2.86, 3.1], "rain": [15.8, 19.6, 22.6, 29.1, 31.6, 39.9, 44.2, 46.0], "shares": [[43, 18, 38], [46, 20, 35], [45, 22, 34], [52, 21, 27], [53, 22, 24], [56, 22, 22], [53, 26, 22], [56, 24, 19]], "ml_score": [55, 37, 30, 45, 50, 58, 65, 100], "ml_shares": [56, 33, 11], "ml_anomaly": true, "cusum_week": 3, "complete": 100, "gap": false, "alloc_priority": 141.76, "teams": 4, "vaccines": 8000}, {"id": "jodhpur", "name": "Jodhpur", "state": "Rajasthan", "lat": 26.2389, "lon": 73.0243, "vet": [23.0, 24.5, 27.0, 27.0, 32.5, 32.5, 35.5, 38.0], "clim": [4.15, 4.43, 5.12, 5.71, 6.05, 6.05, 6.84, 6.85], "vax_cov": 0.41, "scores": [44.3, 46.2, 50.1, 51.5, 57.0, 56.9, 61.4, 63.6], "human": [7, 7, 6, 7, 8, 8, 9, 9], "deaths": [2, 2, 2, 2, 3, 2, 3, 3], "abortions": [3, 3, 4, 4, 4, 5, 4, 5], "ppr": [5, 6, 6, 6, 7, 8, 9, 9], "temp": [1.39, 1.49, 1.76, 1.97, 2.05, 2.14, 2.53, 2.4], "rain": [24.7, 26.2, 29.3, 32.5, 35.4, 32.9, 34.3, 38.0], "shares": [[43, 23, 33], [44, 24, 32], [45, 26, 29], [44, 28, 29], [48, 27, 26], [48, 27, 26], [48, 28, 24], [50, 27, 23]], "ml_score": [14, 9, 8, 9, 15, 14, 19, 22], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 100, "gap": false, "alloc_priority": 92.22, "teams": 2, "vaccines": 3000}, {"id": "bikaner", "name": "Bikaner", "state": "Rajasthan", "lat": 28.0229, "lon": 73.3119, "vet": [27.0, 26.0, 32.5, 35.5, 35.5, 39.5, 43.5, 47.5], "clim": [4.27, 4.31, 4.95, 5.67, 6.82, 6.96, 7.65, 7.53], "vax_cov": 0.38, "scores": [48.7, 47.9, 54.9, 59.3, 62.1, 65.8, 70.9, 73.9], "human": [8, 8, 7, 7, 9, 9, 10, 11], "deaths": [2, 2, 3, 3, 3, 3, 3, 4], "abortions": [4, 3, 4, 4, 4, 5, 6, 6], "ppr": [6, 7, 7, 9, 9, 10, 11, 11], "temp": [1.55, 1.46, 1.77, 2.03, 2.61, 2.49, 2.97, 2.7], "rain": [22.2, 25.2, 26.4, 30.3, 31.8, 37.1, 34.5, 40.0], "shares": [[46, 22, 32], [45, 22, 32], [49, 23, 28], [50, 24, 26], [48, 27, 25], [50, 26, 24], [51, 27, 22], [54, 25, 21]], "ml_score": [15, 15, 27, 25, 21, 28, 44, 49], "ml_shares": [0, 0, 0], "ml_anomaly": true, "cusum_week": 4, "complete": 100, "gap": false, "alloc_priority": 73.9, "teams": 4, "vaccines": 8000}, {"id": "jaisalmer", "name": "Jaisalmer", "state": "Rajasthan", "lat": 26.9157, "lon": 70.9083, "vet": [15.0, 21.5, 25.5, 24.5, 27.0, 31.0, 38.0, 36.5], "clim": [3.91, 4.68, 5.43, 5.95, 7.11, 7.24, 7.31, 8.15], "vax_cov": 0.44, "scores": [36.3, 43.6, 48.8, 49.3, 54.3, 57.9, 63.9, 64.8], "human": [4, 4, 3, 6, 6, 7, 7, 8], "deaths": [1, 2, 2, 2, 2, 2, 3, 3], "abortions": [2, 3, 4, 3, 4, 5, 5, 5], "ppr": [4, 4, 5, 6, 6, 7, 9, 8], "temp": [1.33, 1.76, 1.9, 2.11, 2.62, 2.72, 2.64, 2.9], "rain": [22.8, 22.7, 30.1, 32.3, 35.9, 35.2, 38.4, 44.0], "shares": [[34, 27, 39], [41, 27, 32], [44, 28, 29], [41, 30, 28], [41, 33, 26], [45, 31, 24], [50, 29, 22], [47, 31, 22]], "ml_score": [27, 16, 11, 16, 32, 32, 35, 53], "ml_shares": [0, 100, 0], "ml_anomaly": true, "cusum_week": 6, "complete": 100, "gap": false, "alloc_priority": 64.8, "teams": 2, "vaccines": 3000}, {"id": "jaipur", "name": "Jaipur", "state": "Rajasthan", "lat": 26.9124, "lon": 75.7873, "vet": [13.5, 13.5, 17.5, 17.5, 17.5, 16.0, 17.5, 17.5], "clim": [3.62, 3.33, 3.62, 3.62, 3.77, 3.96, 4.59, 4.35], "vax_cov": 0.63, "scores": [29.6, 28.8, 32.9, 32.9, 33.3, 32.5, 35.3, 34.7], "human": [5, 4, 3, 4, 5, 5, 5, 4], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 3, 3, 3, 3, 3, 3], "ppr": [3, 3, 4, 4, 4, 3, 4, 4], "temp": [1.36, 1.23, 1.36, 1.28, 1.33, 1.4, 1.7, 1.6], "rain": [17.6, 16.7, 17.6, 19.8, 20.7, 21.6, 23.0, 22.0], "shares": [[38, 31, 31], [39, 29, 32], [44, 28, 28], [44, 28, 28], [44, 28, 28], [41, 30, 28], [41, 33, 26], [42, 31, 27]], "ml_score": [12, 14, 0, 0, 0, 10, 11, 6], "ml_shares": [0, 75, 25], "ml_anomaly": false, "cusum_week": 7, "complete": 100, "gap": false, "alloc_priority": 41.987, "teams": 1, "vaccines": 0}, {"id": "kutch", "name": "Kutch", "state": "Gujarat", "lat": 23.242, "lon": 69.6669, "vet": [17.5, 15.0, 20.5, 24.5, 27.0, 27.0, 28.5, 28.5], "clim": [3.82, 4.24, 4.37, 4.33, 5.39, 5.99, 5.2, 6.03], "vax_cov": 0.52, "scores": [36.1, 35.1, 40.0, 43.2, 48.0, 49.5, 48.7, 50.8], "human": [6, 5, 5, 4, 5, 6, 8, 7], "deaths": [1, 1, 1, 2, 2, 2, 2, 2], "abortions": [3, 2, 3, 3, 4, 4, 4, 4], "ppr": [4, 4, 6, 6, 6, 6, 7, 7], "temp": [1.37, 1.48, 1.55, 1.47, 1.95, 2.26, 1.84, 2.2], "rain": [20.3, 23.6, 23.7, 25.2, 28.2, 28.8, 28.3, 31.0], "shares": [[40, 26, 33], [36, 30, 34], [43, 27, 30], [47, 25, 28], [47, 28, 25], [45, 30, 24], [49, 27, 25], [47, 30, 24]], "ml_score": [12, 16, 9, 12, 17, 21, 21, 25], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true, "alloc_priority": 50.8, "teams": 2, "vaccines": 3000}, {"id": "ahmednagar", "name": "Ahmednagar", "state": "Maharashtra", "lat": 19.0948, "lon": 74.748, "vet": [18.5, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0], "clim": [2.88, 2.95, 3.24, 3.34, 3.1, 3.42, 3.77, 3.72], "vax_cov": 0.66, "scores": [31.1, 32.5, 33.3, 33.5, 32.9, 33.7, 34.6, 34.5], "human": [5, 5, 5, 6, 6, 6, 6, 5], "deaths": [2, 2, 2, 2, 2, 2, 2, 2], "abortions": [3, 3, 3, 3, 3, 3, 3, 3], "ppr": [2, 3, 3, 3, 3, 3, 3, 3], "temp": [1.18, 1.08, 1.25, 1.24, 1.11, 1.29, 1.4, 1.4], "rain": [11.3, 15.1, 14.8, 16.6, 16.6, 16.4, 18.8, 18.0], "shares": [[50, 23, 27], [51, 23, 26], [50, 24, 26], [50, 25, 25], [51, 24, 26], [49, 25, 25], [48, 27, 25], [48, 27, 25]], "ml_score": [28, 16, 7, 5, 9, 6, 10, 8], "ml_shares": [0, 0, 100], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "alloc_priority": 40.71, "teams": 0, "vaccines": 0}, {"id": "pune", "name": "Pune", "state": "Maharashtra", "lat": 18.5204, "lon": 73.8567, "vet": [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0], "clim": [2.79, 2.82, 2.87, 2.79, 2.91, 2.94, 2.67, 2.78], "vax_cov": 0.74, "scores": [21.0, 21.0, 21.2, 21.0, 21.3, 21.3, 20.7, 21.0], "human": [3, 3, 3, 2, 3, 2, 3, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [0, 0, 0, 0, 0, 0, 0, 0], "temp": [1.1, 1.08, 1.16, 1.03, 1.15, 1.19, 1.03, 1.1], "rain": [12.1, 13.1, 11.7, 14.0, 12.6, 11.9, 12.2, 12.0], "shares": [[36, 33, 31], [36, 33, 31], [35, 34, 31], [36, 33, 31], [35, 34, 31], [35, 34, 30], [36, 32, 31], [36, 33, 31]], "ml_score": [8, 13, 14, 8, 15, 21, 35, 12], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "alloc_priority": 26.04, "teams": 0, "vaccines": 0}, {"id": "latur", "name": "Latur", "state": "Maharashtra", "lat": 18.4088, "lon": 76.5604, "vet": [13.5, 15.0, 15.0, 19.0, 17.5, 19.0, 17.5, 17.5], "clim": [3.39, 3.88, 3.96, 4.2, 4.73, 4.95, 4.55, 4.97], "vax_cov": 0.58, "scores": [30.2, 32.7, 32.9, 36.8, 36.9, 38.7, 36.5, 37.5], "human": [4, 3, 5, 4, 5, 5, 5, 6], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 3, 3, 3, 3, 3], "ppr": [3, 4, 4, 5, 4, 5, 4, 4], "temp": [1.2, 1.4, 1.38, 1.49, 1.67, 1.7, 1.66, 1.8], "rain": [18.4, 20.4, 22.2, 22.7, 25.9, 28.4, 23.5, 26.0], "shares": [[37, 28, 35], [38, 30, 32], [38, 30, 32], [43, 28, 29], [40, 32, 28], [41, 32, 27], [40, 31, 29], [39, 33, 28]], "ml_score": [19, 5, 6, 6, 6, 17, 3, 13], "ml_shares": [0, 100, 0], "ml_anomaly": false, "cusum_week": 4, "complete": 83, "gap": true, "alloc_priority": 37.5, "teams": 0, "vaccines": 0}, {"id": "bhopal", "name": "Bhopal", "state": "Madhya Pradesh", "lat": 23.2599, "lon": 77.4126, "vet": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "clim": [2.83, 2.78, 2.99, 3.07, 3.04, 3.53, 2.96, 3.09], "vax_cov": 0.71, "scores": [24.3, 24.2, 24.7, 24.9, 24.8, 26.1, 24.6, 25.0], "human": [3, 3, 3, 4, 4, 3, 4, 2], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [2, 2, 2, 2, 2, 2, 2, 2], "ppr": [2, 2, 2, 2, 2, 2, 2, 2], "temp": [1.06, 0.99, 1.16, 1.18, 1.21, 1.38, 1.1, 1.2], "rain": [13.8, 14.9, 13.6, 14.2, 12.9, 15.7, 14.7, 14.0], "shares": [[41, 29, 30], [41, 29, 30], [40, 30, 29], [40, 31, 29], [40, 31, 29], [38, 34, 28], [41, 30, 29], [40, 31, 29]], "ml_score": [13, 18, 4, 4, 4, 28, 6, 6], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "alloc_priority": 28.749999999999996, "teams": 0, "vaccines": 0}, {"id": "wayanad", "name": "Wayanad", "state": "Kerala", "lat": 11.6854, "lon": 76.132, "vet": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "clim": [0.58, 0.54, 0.58, 0.58, 0.5, 0.56, 0.52, 0.54], "vax_cov": 0.89, "scores": [7.5, 7.4, 7.5, 7.5, 7.3, 7.5, 7.4, 7.4], "human": [1, 1, 1, 1, 0, 1, 0, 0], "deaths": [0, 0, 0, 0, 0, 0, 0, 0], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.32, 0.3, 0.32, 0.32, 0.28, 0.31, 0.29, 0.3], "rain": [-4.5, -4.1, -4.1, -3.7, -3.8, -4.0, -3.9, -4.0], "shares": [[44, 19, 37], [45, 18, 37], [44, 19, 37], [44, 19, 37], [45, 17, 37], [45, 19, 37], [45, 18, 37], [45, 18, 37]], "ml_score": [48, 40, 48, 48, 71, 54, 58, 40], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "alloc_priority": 7.4, "teams": 0, "vaccines": 0}, {"id": "kozhikode", "name": "Kozhikode", "state": "Kerala", "lat": 11.2588, "lon": 75.7804, "vet": [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0], "clim": [1.14, 0.95, 1.21, 1.18, 1.15, 0.99, 1.01, 1.03], "vax_cov": 0.86, "scores": [13.0, 12.5, 13.2, 13.1, 13.0, 12.6, 12.7, 12.8], "human": [4, 2, 2, 2, 1, 2, 2, 3], "deaths": [1, 1, 1, 1, 1, 1, 1, 1], "abortions": [1, 1, 1, 1, 1, 1, 1, 1], "ppr": [1, 1, 1, 1, 1, 1, 1, 1], "temp": [0.55, 0.45, 0.59, 0.58, 0.55, 0.48, 0.49, 0.5], "rain": [2.2, 2.1, 2.2, 2.1, 2.4, 1.9, 1.9, 2.0], "shares": [[51, 22, 27], [53, 19, 28], [51, 23, 27], [51, 23, 27], [51, 22, 27], [53, 20, 28], [53, 20, 28], [52, 20, 27]], "ml_score": [36, 53, 48, 40, 34, 37, 33, 38], "ml_shares": [0, 0, 0], "ml_anomaly": false, "cusum_week": null, "complete": 100, "gap": false, "alloc_priority": 14.336000000000002, "teams": 0, "vaccines": 0}], "steps": ["Flagged", "Verified", "Team dispatched", "Samples sent", "Closed"], "alerts": [{"district": "Barmer", "id": "barmer", "opened": "2026-10-25T19:47:46+05:30", "step": 0}, {"district": "Bikaner", "id": "bikaner", "opened": "2026-10-25T19:47:46+05:30", "step": 0}], "events": [{"ts": "2026-10-25T19:47:46+05:30", "text": "ALERT opened: Bikaner reached 73.9"}, {"ts": "2026-10-25T19:47:46+05:30", "text": "ALERT opened: Barmer reached 88.6"}], "sources": [{"sector": "Animal health", "mode": "simulated", "detail": "synthetic demo series", "feed": "NADRES / state AH dept"}, {"sector": "Human health", "mode": "simulated", "detail": "synthetic demo series", "feed": "IDSP / IHIP"}, {"sector": "Climate", "mode": "simulated", "detail": "last refresh n/a", "feed": "IMD / Open-Meteo"}], "live": false, "corridors": [{"from": "barmer", "to": "jodhpur", "name": "Marwar cattle route", "vol": 0.9}, {"from": "barmer", "to": "jaisalmer", "name": "Thar border route", "vol": 0.5}, {"from": "barmer", "to": "kutch", "name": "Kutch\u2013Barmer trade route", "vol": 0.6}, {"from": "jodhpur", "to": "bikaner", "name": "Western Rajasthan fair route", "vol": 0.6}, {"from": "jodhpur", "to": "jaipur", "name": "Jaipur mandi route", "vol": 0.9}, {"from": "jaipur", "to": "bhopal", "name": "Central India transit", "vol": 0.7}, {"from": "pune", "to": "ahmednagar", "name": "Deccan route", "vol": 0.8}, {"from": "ahmednagar", "to": "latur", "name": "Marathwada route", "vol": 0.6}, {"from": "bhopal", "to": "ahmednagar", "name": "Satpura transit", "vol": 0.5}, {"from": "kozhikode", "to": "wayanad", "name": "Malabar hill route", "vol": 0.4}], "webhook": false, "scenario": null}, D, byId, W = P.weights.slice(), REF = P.ref_cap, LAST, wk, selected = null, playing = null, vaxPlus = 0, inited = false;
 let activeHighlightWeek = null; 
 const markers = {}, buffers = {}, corridors = {}, labels = {}; let heat = null;
 const grp = {};
@@ -552,53 +582,21 @@ function trend(d) { const k = Math.min(4, d.S.length), y = d.S.slice(-k), xm = (
   const m = de ? nu / de : 0, last = y[k - 1];
   return { m, pts: [1, 2].map(h => Math.max(0, Math.min(100, last + m * h))), toCrit: (last < 70 && m > 0.5) ? Math.ceil((70 - last) / m) : null }; }
 
-/* --- SEAMLESS EXCEL / CSV HANDLING VIA SHEETJS --- */
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
+async function handleCSVUpload(e) {
+  const file = e.target.files[0];
   if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const firstSheet = workbook.SheetNames[0];
-      const csvText = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheet]);
-      
-      const p = await post('/api/upload', { csv_data: csvText });
-      ingest(p); 
-      wk = LAST; 
-      if($('week')) $('week').value = LAST; 
-      render(); 
-      toast('Data Uploaded & Dashboard Updated');
-    } catch(err) {
-      toast('Upload failed: ' + err.message, true);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-  event.target.value = '';
-}
-
-/* --- GOOGLE SHEETS DIRECT SYNC --- */
-async function importGoogleSheet() {
-  const url = prompt("Paste your Public Google Sheet URL here:\n(Make sure 'Anyone with the link can view' is enabled)");
-  if (!url) return;
-  
-  toast('Fetching Google Sheet...');
+  const text = await file.text();
   try {
-    let fetchUrl = url;
-    if (url.includes('/edit')) {
-      fetchUrl = url.replace(/\/edit.*$/, '/export?format=csv');
-    }
-    const p = await post('/api/fetch_url', { url: fetchUrl });
-    ingest(p);
+    const p = await post('/api/upload', { csv_data: text });
+    ingest(p); 
     wk = LAST; 
-    if($('week')) $('week').value = LAST; 
+    $('week').value = LAST; 
     render(); 
-    toast('Google Sheet Synced & Dashboard Updated');
+    toast('CSV Uploaded & Dashboard Updated');
   } catch (err) {
-    toast('Failed to sync: ' + err.message, true);
+    toast('Upload failed: ' + err.message, true);
   }
+  e.target.value = '';
 }
 
 function ingest(p) {
@@ -638,8 +636,6 @@ function initMap() {
     markers[d.id] = L.marker([d.lat, d.lon], { icon: mkIcon(d), riseOnHover: true }).on('click', () => select(d.id));
     buffers[d.id] = L.circle([d.lat, d.lon], { radius: 5000, weight: 1, fillOpacity: .25 });
     labels[d.id] = L.marker([d.lat, d.lon], { icon: L.divIcon({ className: '', iconSize: [0,0], html: '<div class="mkl" style="position:absolute; transform:translate(-50%, 14px); color:#f5f3ff; text-shadow:0 0 4px #000; font-weight:bold; pointer-events:none; font-size:11px;">' + esc(trDist(d.name)) + '</div>' }) });
-    
-    // Add layers to groups, but DO NOT add the groups to the map yet!
     grp.markers.addLayer(markers[d.id]);
     grp.buf.addLayer(buffers[d.id]);
     grp.labels.addLayer(labels[d.id]);
@@ -654,8 +650,6 @@ function initMap() {
   });
   if($('rDist')) $('rDist').innerHTML = D.map(d => '<option value="' + esc(d.name) + '">' + esc(d.name) + ', ' + esc(d.state) + '</option>').join('');
   
-  // NOTE: Markers and labels are NOT added to the map initially.
-
   const tg = (id, key) => { if($(id)) $(id).addEventListener('change', e => { if (e.target.checked) grp[key].addTo(map); else map.removeLayer(grp[key]); updateHint(); render(); }); };
   tg('lMarkers', 'markers'); tg('lBuf', 'buf'); tg('lCor', 'cor'); tg('lLab', 'labels');
   
@@ -914,7 +908,61 @@ function renderMeta() {
 async function post(u, b) { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
   const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; }
 
-/* --- OPTIMISTIC UI UPDATING FOR INSTANT FIELD REPORTS --- */
+async function optimizeRes() {
+  try {
+    const t = +$('gTeams').value || 0;
+    const v = +$('gVax').value || 0;
+    const p = await post('/api/optimize', { teams: t, vax: v });
+    ingest(p); wk = LAST; if($('week')) $('week').value = LAST; render(); toast('Resources re-allocated optimally');
+  } catch (e) { toast('Needs the run.py server: ' + e.message, true); }
+}
+
+let sirData = null, sirInterval = null, sirMarkers = {};
+async function startSIR() {
+  if(sirInterval) clearInterval(sirInterval);
+  $('sirOverlay').style.display = 'block';
+  toast('Calculating SIR differential equations...');
+  try {
+    sirData = await post('/api/forecast_sir', {});
+    
+    // Add pulsing markers for SIR
+    D.forEach(d => {
+      if(sirMarkers[d.id]) map.removeLayer(sirMarkers[d.id]);
+      sirMarkers[d.id] = L.circleMarker([d.lat, d.lon], {radius: 5, color: '#f472b6', fillColor: '#ef4444', fillOpacity: 0.7, weight: 2}).addTo(map);
+    });
+    
+    // Animate the corridors
+    Object.values(corridors).forEach(c => c.line.setStyle({ className: 'flow sir-active' }));
+    
+    let day = 0;
+    sirInterval = setInterval(() => {
+      $('sirDay').innerText = day;
+      D.forEach(d => {
+        const inf = sirData.I[d.id][day];
+        // Scale radius visually by infected population count
+        const r = 5 + Math.sqrt(inf) * 0.12;
+        const pct = inf / 100000;
+        // Shift color to intense red if infection spikes
+        const col = pct > 0.08 ? '#ef4444' : pct > 0.02 ? '#f59e0b' : '#10b981';
+        sirMarkers[d.id].setRadius(r).setStyle({color: col, fillColor: col});
+      });
+      
+      day++;
+      if(day > sirData.days) {
+        clearInterval(sirInterval);
+        setTimeout(() => {
+          $('sirOverlay').style.display = 'none';
+          Object.values(sirMarkers).forEach(m => map.removeLayer(m));
+          Object.values(corridors).forEach(c => c.line.setStyle({ className: 'flow' }));
+        }, 2500);
+      }
+    }, 120);
+  } catch(e) {
+    toast('SIR Failed: ' + e.message, true);
+    $('sirOverlay').style.display = 'none';
+  }
+}
+
 async function sendReport() {
   try { 
     const distInput = $('rDist').value;
@@ -922,7 +970,6 @@ async function sendReport() {
     const de = +$('rDe').value || 0;
     const pp = +$('rPp').value || 0;
     
-    // Optimistic UI Update locally
     const dObj = D.find(x => x.name === distInput);
     if(dObj) {
       dObj.abortions[LAST] += ab;
@@ -933,7 +980,6 @@ async function sendReport() {
       render();
     }
     
-    // Sync with backend
     const p = await post('/api/report', { district: distInput, abortions: ab, deaths: de, ppr: pp });
     ingest(p); wk = LAST; if($('week')) $('week').value = LAST; 
     if (dObj) selected = dObj.id; 

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T18:55:47+05:30",
+ "generated_at": "2026-10-25T19:51:07+05:30",
  "weeks": [
   "Wk 1",
   "Wk 2",
@@ -40,7 +40,7 @@
     44.5,
     51.5,
     50.0,
-    69.0
+    61.0
    ],
    "clim": [
     3.25,
@@ -91,7 +91,7 @@
     6,
     6,
     7,
-    10
+    8
    ],
    "ppr": [
     5,
@@ -101,7 +101,7 @@
     9,
     11,
     11,
-    16
+    14
    ],
    "temp": [
     1.22,
@@ -166,26 +166,27 @@
     ]
    ],
    "ml_score": [
+    55,
+    37,
+    30,
+    45,
     50,
-    34,
-    28,
-    41,
-    44,
-    53,
-    60,
+    58,
+    65,
     100
    ],
    "ml_shares": [
-    54,
-    31,
-    15
+    56,
+    33,
+    11
    ],
    "ml_anomaly": true,
    "cusum_week": 3,
    "complete": 100,
    "gap": false,
+   "alloc_priority": 141.76,
    "teams": 4,
-   "vaccines": 30000
+   "vaccines": 8000
   },
   {
    "id": "jodhpur",
@@ -327,14 +328,14 @@
     ]
    ],
    "ml_score": [
-    13,
+    14,
+    9,
     8,
-    7,
-    8,
-    13,
-    13,
-    18,
-    19
+    9,
+    15,
+    14,
+    19,
+    22
    ],
    "ml_shares": [
     0,
@@ -345,8 +346,9 @@
    "cusum_week": 4,
    "complete": 100,
    "gap": false,
-   "teams": 4,
-   "vaccines": 18000
+   "alloc_priority": 92.22,
+   "teams": 2,
+   "vaccines": 3000
   },
   {
    "id": "bikaner",
@@ -488,14 +490,14 @@
     ]
    ],
    "ml_score": [
-    14,
-    14,
-    24,
-    23,
-    20,
-    26,
-    40,
-    46
+    15,
+    15,
+    27,
+    25,
+    21,
+    28,
+    44,
+    49
    ],
    "ml_shares": [
     0,
@@ -506,8 +508,9 @@
    "cusum_week": 4,
    "complete": 100,
    "gap": false,
-   "teams": 1,
-   "vaccines": 13500
+   "alloc_priority": 73.9,
+   "teams": 4,
+   "vaccines": 8000
   },
   {
    "id": "jaisalmer",
@@ -649,14 +652,14 @@
     ]
    ],
    "ml_score": [
-    25,
-    14,
-    12,
-    16,
     27,
-    28,
-    30,
-    49
+    16,
+    11,
+    16,
+    32,
+    32,
+    35,
+    53
    ],
    "ml_shares": [
     0,
@@ -667,8 +670,9 @@
    "cusum_week": 6,
    "complete": 100,
    "gap": false,
-   "teams": 1,
-   "vaccines": 13500
+   "alloc_priority": 64.8,
+   "teams": 2,
+   "vaccines": 3000
   },
   {
    "id": "jaipur",
@@ -810,26 +814,27 @@
     ]
    ],
    "ml_score": [
-    11,
+    12,
     14,
     0,
     0,
     0,
-    9,
     10,
-    4
+    11,
+    6
    ],
    "ml_shares": [
     0,
-    73,
-    27
+    75,
+    25
    ],
    "ml_anomaly": false,
    "cusum_week": 7,
    "complete": 100,
    "gap": false,
-   "teams": 2,
-   "vaccines": 33000
+   "alloc_priority": 41.987,
+   "teams": 1,
+   "vaccines": 0
   },
   {
    "id": "kutch",
@@ -971,14 +976,14 @@
     ]
    ],
    "ml_score": [
-    10,
-    15,
-    8,
-    11,
+    12,
     16,
-    19,
+    9,
+    12,
+    17,
     21,
-    24
+    21,
+    25
    ],
    "ml_shares": [
     0,
@@ -989,8 +994,9 @@
    "cusum_week": 4,
    "complete": 83,
    "gap": true,
-   "teams": 4,
-   "vaccines": 36000
+   "alloc_priority": 50.8,
+   "teams": 2,
+   "vaccines": 3000
   },
   {
    "id": "ahmednagar",
@@ -1132,13 +1138,13 @@
     ]
    ],
    "ml_score": [
-    27,
+    28,
     16,
     7,
     5,
     9,
     6,
-    9,
+    10,
     8
    ],
    "ml_shares": [
@@ -1150,8 +1156,9 @@
    "cusum_week": null,
    "complete": 100,
    "gap": false,
-   "teams": 1,
-   "vaccines": 7500
+   "alloc_priority": 40.71,
+   "teams": 0,
+   "vaccines": 0
   },
   {
    "id": "pune",
@@ -1293,13 +1300,13 @@
     ]
    ],
    "ml_score": [
-    9,
+    8,
     13,
     14,
-    9,
+    8,
     15,
     21,
-    32,
+    35,
     12
    ],
    "ml_shares": [
@@ -1311,8 +1318,9 @@
    "cusum_week": null,
    "complete": 100,
    "gap": false,
-   "teams": 1,
-   "vaccines": 7500
+   "alloc_priority": 26.04,
+   "teams": 0,
+   "vaccines": 0
   },
   {
    "id": "latur",
@@ -1454,12 +1462,12 @@
     ]
    ],
    "ml_score": [
-    18,
-    5,
-    5,
+    19,
     5,
     6,
-    16,
+    6,
+    6,
+    17,
     3,
     13
    ],
@@ -1472,8 +1480,9 @@
    "cusum_week": 4,
    "complete": 83,
    "gap": true,
-   "teams": 2,
-   "vaccines": 27000
+   "alloc_priority": 37.5,
+   "teams": 0,
+   "vaccines": 0
   },
   {
    "id": "bhopal",
@@ -1615,12 +1624,12 @@
     ]
    ],
    "ml_score": [
-    12,
+    13,
     18,
     4,
-    5,
     4,
-    26,
+    4,
+    28,
     6,
     6
    ],
@@ -1633,8 +1642,9 @@
    "cusum_week": null,
    "complete": 100,
    "gap": false,
-   "teams": 2,
-   "vaccines": 21000
+   "alloc_priority": 28.749999999999996,
+   "teams": 0,
+   "vaccines": 0
   },
   {
    "id": "wayanad",
@@ -1776,14 +1786,14 @@
     ]
    ],
    "ml_score": [
-    45,
-    37,
-    45,
-    45,
-    65,
-    50,
+    48,
+    40,
+    48,
+    48,
+    71,
     54,
-    37
+    58,
+    40
    ],
    "ml_shares": [
     0,
@@ -1794,8 +1804,9 @@
    "cusum_week": null,
    "complete": 100,
    "gap": false,
-   "teams": 1,
-   "vaccines": 19500
+   "alloc_priority": 7.4,
+   "teams": 0,
+   "vaccines": 0
   },
   {
    "id": "kozhikode",
@@ -1937,14 +1948,14 @@
     ]
    ],
    "ml_score": [
+    36,
+    53,
+    48,
+    40,
     34,
-    49,
-    45,
     37,
-    32,
-    35,
-    32,
-    36
+    33,
+    38
    ],
    "ml_shares": [
     0,
@@ -1955,8 +1966,9 @@
    "cusum_week": null,
    "complete": 100,
    "gap": false,
-   "teams": 3,
-   "vaccines": 22500
+   "alloc_priority": 14.336000000000002,
+   "teams": 0,
+   "vaccines": 0
   }
  ],
  "steps": [
@@ -1970,31 +1982,51 @@
   {
    "district": "Barmer",
    "id": "barmer",
-   "opened": "2026-10-25T18:53:59+05:30",
-   "step": 0
+   "opened": "2026-10-25T19:47:46+05:30",
+   "step": 4
   },
   {
    "district": "Bikaner",
    "id": "bikaner",
-   "opened": "2026-10-25T18:53:59+05:30",
-   "step": 0
+   "opened": "2026-10-25T19:47:46+05:30",
+   "step": 2
   }
  ],
  "events": [
   {
-   "ts": "2026-10-25T18:55:46+05:30",
-   "text": "Field report: Barmer +2 abortions, +0 deaths, +2 PPR/FMD"
+   "ts": "2026-10-25T19:51:07+05:30",
+   "text": "Bikaner: Team dispatched"
   },
   {
-   "ts": "2026-10-25T18:54:58+05:30",
-   "text": "Refresh requested (simulated mode: start with --live for real weather)"
+   "ts": "2026-10-25T19:51:06+05:30",
+   "text": "Bikaner: Verified"
   },
   {
-   "ts": "2026-10-25T18:53:59+05:30",
+   "ts": "2026-10-25T19:51:04+05:30",
+   "text": "Barmer: Closed"
+  },
+  {
+   "ts": "2026-10-25T19:51:02+05:30",
+   "text": "Barmer: Samples sent"
+  },
+  {
+   "ts": "2026-10-25T19:50:59+05:30",
+   "text": "Barmer: Team dispatched"
+  },
+  {
+   "ts": "2026-10-25T19:50:52+05:30",
+   "text": "Barmer: Verified"
+  },
+  {
+   "ts": "2026-10-25T19:49:27+05:30",
+   "text": "Resource pool optimized: 15 Teams, 25000 Vaccines"
+  },
+  {
+   "ts": "2026-10-25T19:47:46+05:30",
    "text": "ALERT opened: Bikaner reached 73.9"
   },
   {
-   "ts": "2026-10-25T18:53:59+05:30",
+   "ts": "2026-10-25T19:47:46+05:30",
    "text": "ALERT opened: Barmer reached 88.6"
   }
  ],
