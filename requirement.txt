@@ -1,0 +1,8 @@
+# Spillover Radar: Python dependencies
+# Everything else (http.server, json, threading, argparse, urllib) is in the standard library.
+# Requires Python 3.10+
+# Developed and tested with: Python 3.12, numpy 2.4, pandas 3.0, scikit-learn 1.8
+
+numpy>=1.24
+pandas>=2.0
+scikit-learn>=1.3
